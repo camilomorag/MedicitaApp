@@ -70,7 +70,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
 @Composable
 fun AppMedicita() {
     var screen by remember { mutableStateOf("login") }
@@ -81,17 +80,28 @@ fun AppMedicita() {
     ) {
         when (screen) {
             "login" -> LoginScreen(
-                onLoginSuccess = { screen = "bienvenida" }
+                onLoginSuccess = { screen = "home" }
             )
-            "bienvenida" -> BienvenidaScreen(
-                onComenzar = {
-                    // aquí luego puedes ir al home real
-                }
+
+            "home" -> HomeScreen(
+                onSubirFormula = { screen = "upload_formula" },
+                onVerTurno = { screen = "queue_status" }
+            )
+
+            "upload_formula" -> UploadFormulaScreen(
+                onBack = { screen = "home" }
+            )
+
+            "queue_status" -> QueueStatusScreen(
+                onBack = { screen = "home" }
+            )
+
+            "delivery_success" -> DeliverySuccessScreen(
+                onGoHome = { screen = "home" }
             )
         }
     }
 }
-
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit
