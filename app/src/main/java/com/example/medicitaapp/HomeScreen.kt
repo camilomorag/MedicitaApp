@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun HomeScreen(
+    userName: String,
     onSubirFormula: () -> Unit,
     onVerTurno: () -> Unit
 ) {
@@ -45,7 +46,7 @@ fun HomeScreen(
             )
 
             Text(
-                text = "Arthur Smith",
+                text = userName,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = AppColors.TextPrimary
