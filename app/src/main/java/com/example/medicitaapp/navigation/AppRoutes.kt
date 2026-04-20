@@ -7,4 +7,9 @@ object AppRoutes {
     const val UPLOAD = "upload"
     const val QUEUE = "queue"
     const val SUCCESS = "success"
+    const val PROFILE = "profile"
+    const val NOTIFICATIONS = "notifications"
+    const val PHARMACIST_LOGIN = "pharmacist_login"
+    const val PHARMACIST_REQUESTS = "pharmacist_requests"
+    const val REVIEW_FORMULA = "review_formula"
 }
