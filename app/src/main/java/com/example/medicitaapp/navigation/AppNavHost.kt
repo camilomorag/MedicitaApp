@@ -1,9 +1,6 @@
 package com.example.medicitaapp.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -17,6 +14,8 @@ import com.example.medicitaapp.UploadFormulaScreen
 import com.example.medicitaapp.admin.PharmacistLoginScreen
 import com.example.medicitaapp.admin.PharmacistRequestsScreen
 import com.example.medicitaapp.admin.ReviewFormulaScreen
+import com.example.medicitaapp.user.NotificationsScreen
+import com.example.medicitaapp.user.UserProfileScreen
 import com.example.medicitaapp.viewmodel.AuthViewModel
 
 @Composable
@@ -24,8 +23,6 @@ fun AppNavHost(
     navController: NavHostController,
     authViewModel: AuthViewModel = viewModel()
 ) {
-    val selectedRequestId by remember { mutableStateOf(0) }
-
     NavHost(
         navController = navController,
         startDestination = AppRoutes.LOGIN
@@ -59,7 +56,9 @@ fun AppNavHost(
             HomeScreen(
                 userName = authViewModel.currentUser?.nombre ?: "Usuario",
                 onSubirFormula = { navController.navigate(AppRoutes.UPLOAD) },
-                onVerTurno = { navController.navigate(AppRoutes.QUEUE) }
+                onVerTurno = { navController.navigate(AppRoutes.QUEUE) },
+                onVerNotificaciones = { navController.navigate("notifications") },
+                onVerPerfil = { navController.navigate("profile") }
             )
         }
 
@@ -83,6 +82,20 @@ fun AppNavHost(
                         popUpTo(AppRoutes.HOME)
                     }
                 }
+            )
+        }
+
+        composable("profile") {
+            UserProfileScreen(
+                authViewModel = authViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("notifications") {
+            NotificationsScreen(
+                authViewModel = authViewModel,
+                onBack = { navController.popBackStack() }
             )
         }
 

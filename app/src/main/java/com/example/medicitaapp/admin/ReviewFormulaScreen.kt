@@ -1,5 +1,7 @@
 package com.example.medicitaapp.admin
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -13,7 +15,13 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,28 +81,59 @@ fun ReviewFormulaScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             request?.let { formula ->
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
-                        Text("Paciente", fontSize = 14.sp, color = Color(0xFF6E7786))
+                        Text(
+                            text = "Paciente",
+                            fontSize = 14.sp,
+                            color = Color(0xFF6E7786)
+                        )
+
                         Spacer(modifier = Modifier.height(6.dp))
+
                         Text(
                             text = formula.userNombre,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF1D2433)
                         )
+
                         Spacer(modifier = Modifier.height(10.dp))
-                        Text("Documento: ${formula.userDocumento}", fontSize = 14.sp, color = Color(0xFF4E596B))
+
+                        Text(
+                            text = "Documento: ${formula.userDocumento}",
+                            fontSize = 14.sp,
+                            color = Color(0xFF4E596B)
+                        )
+
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("Medicamento solicitado: ${formula.medicamento}", fontSize = 14.sp, color = Color(0xFF4E596B))
+
+                        Text(
+                            text = "Medicamento solicitado: ${formula.medicamento}",
+                            fontSize = 14.sp,
+                            color = Color(0xFF4E596B)
+                        )
+
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("Archivo: ${formula.formulaType}", fontSize = 14.sp, color = Color(0xFF4E596B))
+
+                        Text(
+                            text = "Archivo: ${formula.formulaType}",
+                            fontSize = 14.sp,
+                            color = Color(0xFF4E596B)
+                        )
+
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("URI: ${formula.formulaUri}", fontSize = 12.sp, color = Color(0xFF6E7786))
+
+                        Text(
+                            text = "URI: ${formula.formulaUri}",
+                            fontSize = 12.sp,
+                            color = Color(0xFF6E7786)
+                        )
                     }
                 }
 
@@ -127,7 +166,7 @@ fun ReviewFormulaScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = "Aquí puedes usar la URI guardada para abrir o mostrar el archivo enviado.",
+                            text = "Puede abrir el archivo enviado por el usuario para revisarlo.",
                             fontSize = 13.sp,
                             lineHeight = 20.sp,
                             color = Color(0xFF6E7786)
@@ -139,10 +178,64 @@ fun ReviewFormulaScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(160.dp)
-                                .border(1.5.dp, Color(0xFFDDE3EC), RoundedCornerShape(16.dp)),
+                                .border(
+                                    1.5.dp,
+                                    Color(0xFFDDE3EC),
+                                    RoundedCornerShape(16.dp)
+                                ),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBFE)),
                             shape = RoundedCornerShape(16.dp)
-                        ) {}
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (formula.formulaType == "pdf") "PDF cargado" else "Imagen cargada",
+                                    color = Color(0xFF6E7786),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                try {
+                                    val mimeType = if (formula.formulaType == "pdf") {
+                                        "application/pdf"
+                                    } else {
+                                        "image/*"
+                                    }
+
+                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(Uri.parse(formula.formulaUri), mimeType)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(
+                                        context,
+                                        "No se pudo abrir el archivo",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2F80ED)
+                            )
+                        ) {
+                            Text(
+                                text = if (formula.formulaType == "pdf") "Abrir PDF" else "Abrir imagen",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
 
@@ -159,7 +252,9 @@ fun ReviewFormulaScreen(
                             onBack()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
@@ -182,7 +277,9 @@ fun ReviewFormulaScreen(
                             onBack()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2F80ED))
                 ) {
@@ -203,7 +300,9 @@ fun ReviewFormulaScreen(
                             onBack()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E24AA))
                 ) {
@@ -224,12 +323,18 @@ fun ReviewFormulaScreen(
                             onBack()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                     border = BorderStroke(1.5.dp, Color(0xFFD32F2F))
                 ) {
-                    Text("Rechazar fórmula", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Rechazar fórmula",
+                        color = Color(0xFFD32F2F),
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -245,11 +350,17 @@ fun ReviewFormulaScreen(
                             onBack()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB300))
                 ) {
-                    Text("Aplazar solicitud", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Aplazar solicitud",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -257,12 +368,18 @@ fun ReviewFormulaScreen(
 
             Button(
                 onClick = onBack,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 border = BorderStroke(1.5.dp, Color(0xFF2F80ED))
             ) {
-                Text("Volver al panel", color = Color(0xFF2F80ED), fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Volver al panel",
+                    color = Color(0xFF2F80ED),
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

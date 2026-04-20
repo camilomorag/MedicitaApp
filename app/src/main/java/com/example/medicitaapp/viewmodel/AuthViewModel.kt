@@ -53,8 +53,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun submitFormulaRequest(
         formulaUri: String,
-        formulaType: String,
-        medicamento: String
+        formulaType: String
     ): Result<String> {
         return try {
             val user = currentUser ?: return Result.failure(Exception("No hay usuario logueado"))
@@ -64,7 +63,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 userNombre = user.nombre,
                 formulaUri = formulaUri,
                 formulaType = formulaType,
-                medicamento = medicamento,
+                medicamento = "Pendiente de validación",
                 estado = "pendiente"
             )
 

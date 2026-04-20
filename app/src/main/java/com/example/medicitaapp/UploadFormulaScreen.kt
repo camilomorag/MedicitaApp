@@ -1,5 +1,6 @@
 package com.example.medicitaapp
 
+import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -35,7 +36,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -65,12 +66,18 @@ fun UploadFormulaScreen(
 
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileType by remember { mutableStateOf("") }
-    var medicamento by remember { mutableStateOf("") }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+            }
             selectedFileUri = uri
             selectedFileType = "image"
             Toast.makeText(context, "Imagen seleccionada", Toast.LENGTH_SHORT).show()
@@ -78,9 +85,16 @@ fun UploadFormulaScreen(
     }
 
     val pdfPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+            }
             selectedFileUri = uri
             selectedFileType = "pdf"
             Toast.makeText(context, "Archivo PDF seleccionado", Toast.LENGTH_SHORT).show()
@@ -109,22 +123,10 @@ fun UploadFormulaScreen(
 
             FormulaFrameCard()
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = medicamento,
-                onValueChange = { medicamento = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
-                label = { Text("Medicamento solicitado") },
-                shape = RoundedCornerShape(16.dp)
-            )
-
             Spacer(modifier = Modifier.height(18.dp))
 
             Button(
-                onClick = { imagePickerLauncher.launch("image/*") },
+                onClick = { imagePickerLauncher.launch(arrayOf("image/*")) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp)
@@ -140,7 +142,7 @@ fun UploadFormulaScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = { pdfPickerLauncher.launch("application/pdf") },
+                onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp)
@@ -186,36 +188,27 @@ fun UploadFormulaScreen(
 
                         Button(
                             onClick = {
-                                if (medicamento.isBlank()) {
-                                    Toast.makeText(
-                                        context,
-                                        "Ingrese el medicamento solicitado",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                } else {
-                                    scope.launch {
-                                        val result = authViewModel.submitFormulaRequest(
-                                            formulaUri = selectedFileUri.toString(),
-                                            formulaType = selectedFileType,
-                                            medicamento = medicamento
-                                        )
+                                scope.launch {
+                                    val result = authViewModel.submitFormulaRequest(
+                                        formulaUri = selectedFileUri.toString(),
+                                        formulaType = selectedFileType
+                                    )
 
-                                        result.onSuccess {
-                                            Toast.makeText(
-                                                context,
-                                                "Solicitud enviada correctamente",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            onBack()
-                                        }
+                                    result.onSuccess {
+                                        Toast.makeText(
+                                            context,
+                                            "Solicitud enviada correctamente",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        onBack()
+                                    }
 
-                                        result.onFailure {
-                                            Toast.makeText(
-                                                context,
-                                                it.message ?: "Error al guardar",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
+                                    result.onFailure {
+                                        Toast.makeText(
+                                            context,
+                                            it.message ?: "Error al guardar",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 }
                             },

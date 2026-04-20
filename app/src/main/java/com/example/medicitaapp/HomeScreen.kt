@@ -1,19 +1,25 @@
 package com.example.medicitaapp
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,35 +28,69 @@ import androidx.compose.ui.unit.sp
 fun HomeScreen(
     userName: String,
     onSubirFormula: () -> Unit,
-    onVerTurno: () -> Unit
+    onVerTurno: () -> Unit,
+    onVerNotificaciones: () -> Unit,
+    onVerPerfil: () -> Unit
 ) {
     Scaffold(
-        containerColor = AppColors.Background,
-        bottomBar = { HomeBottomBar() }
+        containerColor = Color(0xFFF4F6F8),
+        bottomBar = {
+            HomeBottomBar(
+                onInicio = { /* Ya estamos en home, no hace nada */ },
+                onTurnos = onVerTurno,
+                onAvisos = onVerNotificaciones,
+                onPerfil = onVerPerfil
+            )
+        }
     ) { innerPadding ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AppColors.Background)
+                .background(Color(0xFFF4F6F8))
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = "Buen día,",
-                fontSize = 14.sp,
-                color = AppColors.TextSecondary
-            )
+            // Fila con saludo y foto de perfil
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Buen día,",
+                        fontSize = 14.sp,
+                        color = Color(0xFF7B8494)
+                    )
 
-            Text(
-                text = userName,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppColors.TextPrimary
-            )
+                    Text(
+                        text = userName,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1F2430)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEAF2FF))
+                        .clickable { onVerPerfil() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Perfil",
+                        tint = Color(0xFF2F80ED),
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(18.dp))
 
@@ -112,8 +152,8 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             HomeActionCard(
-                title = "Recordatorios",
-                subtitle = "Revise avisos de entrega y próximos pasos.",
+                title = "Notificaciones",
+                subtitle = "Revise el estado de su fórmula, turno y medicamento.",
                 icon = {
                     Icon(
                         imageVector = Icons.Outlined.Notifications,
@@ -121,7 +161,7 @@ fun HomeScreen(
                         tint = AppColors.Primary
                     )
                 },
-                onClick = { }
+                onClick = onVerNotificaciones
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -160,7 +200,7 @@ fun HomeActionCard(
                         color = AppColors.SoftBlue,
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
                     ),
-                contentAlignment = androidx.compose.ui.Alignment.Center
+                contentAlignment = Alignment.Center
             ) {
                 icon()
             }
@@ -185,5 +225,44 @@ fun HomeActionCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun HomeBottomBar(
+    onInicio: () -> Unit,
+    onTurnos: () -> Unit,
+    onAvisos: () -> Unit,
+    onPerfil: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        HomeBottomItem("Inicio", onInicio)
+        HomeBottomItem("Turnos", onTurnos)
+        HomeBottomItem("Avisos", onAvisos)
+        HomeBottomItem("Perfil", onPerfil)
+    }
+}
+
+@Composable
+fun HomeBottomItem(
+    text: String,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            color = Color(0xFF6E7786)
+        )
     }
 }

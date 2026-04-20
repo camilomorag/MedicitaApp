@@ -59,12 +59,13 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.medicitaapp.admin.PharmacistHomeScreen
 import com.example.medicitaapp.admin.PharmacistLoginScreen
+import com.example.medicitaapp.admin.PharmacistRequestsScreen
 import com.example.medicitaapp.admin.ReviewFormulaScreen
 import com.example.medicitaapp.ui.theme.MedicitaAppTheme
+import com.example.medicitaapp.user.NotificationsScreen
+import com.example.medicitaapp.user.UserProfileScreen
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
-import com.example.medicitaapp.admin.PharmacistRequestsScreen
-import com.example.medicitaapp.admin.PharmacistHomeScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,6 +83,8 @@ fun AppMedicita() {
     val authViewModel: AuthViewModel = viewModel()
     var screen by remember { mutableStateOf("login") }
     var selectedRequestId by remember { mutableStateOf(0) }
+
+    val isLoggedIn = authViewModel.currentUser != null
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -101,43 +104,91 @@ fun AppMedicita() {
                 onSuccess = { screen = "login" }
             )
 
-            "home" -> HomeScreen(
-                userName = authViewModel.currentUser?.nombre ?: "Usuario",
-                onSubirFormula = { screen = "upload_formula" },
-                onVerTurno = { screen = "queue_status" }
-            )
+            "home" -> {
+                if (!isLoggedIn) {
+                    screen = "login"
+                } else {
+                    HomeScreen(
+                        userName = authViewModel.currentUser?.nombre ?: "Usuario",
+                        onSubirFormula = { screen = "upload_formula" },
+                        onVerTurno = { screen = "queue_status" },
+                        onVerNotificaciones = { screen = "notifications" },
+                        onVerPerfil = { screen = "profile" }
+                    )
+                }
+            }
 
-            "upload_formula" -> UploadFormulaScreen(
-                authViewModel = authViewModel,
-                onBack = { screen = "home" }
-            )
+            "upload_formula" -> {
+                if (!isLoggedIn) {
+                    screen = "login"
+                } else {
+                    UploadFormulaScreen(
+                        authViewModel = authViewModel,
+                        onBack = { screen = "home" }
+                    )
+                }
+            }
 
-            "queue_status" -> QueueStatusScreen(
-                onBack = { screen = "home" }
-            )
+            "queue_status" -> {
+                if (!isLoggedIn) {
+                    screen = "login"
+                } else {
+                    QueueStatusScreen(
+                        onBack = { screen = "home" }
+                    )
+                }
+            }
 
-            "delivery_success" -> DeliverySuccessScreen(
-                onGoHome = { screen = "home" }
-            )
+            "profile" -> {
+                if (!isLoggedIn) {
+                    screen = "login"
+                } else {
+                    UserProfileScreen(
+                        authViewModel = authViewModel,
+                        onBack = { screen = "home" }
+                    )
+                }
+            }
+
+            "notifications" -> {
+                if (!isLoggedIn) {
+                    screen = "login"
+                } else {
+                    NotificationsScreen(
+                        authViewModel = authViewModel,
+                        onBack = { screen = "home" }
+                    )
+                }
+            }
+
+            "delivery_success" -> {
+                if (!isLoggedIn) {
+                    screen = "login"
+                } else {
+                    DeliverySuccessScreen(
+                        onGoHome = { screen = "home" }
+                    )
+                }
+            }
 
             "pharmacist_login" -> PharmacistLoginScreen(
-                onLoginSuccess = { screen = "pharmacist_home" },
+                onLoginSuccess = { screen = "pharmacist_requests" },
                 onBack = { screen = "login" }
             )
 
-            "pharmacist_home" -> PharmacistRequestsScreen(
+            "pharmacist_requests" -> PharmacistRequestsScreen(
                 authViewModel = authViewModel,
                 onOpenRequest = { requestId ->
                     selectedRequestId = requestId
                     screen = "review_formula"
                 },
-                onBack = { screen = "home" }
+                onBack = { screen = "login" }
             )
 
             "review_formula" -> ReviewFormulaScreen(
                 authViewModel = authViewModel,
                 requestId = selectedRequestId,
-                onBack = { screen = "pharmacist_home" }
+                onBack = { screen = "pharmacist_requests" }
             )
         }
     }
