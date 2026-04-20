@@ -1,9 +1,12 @@
 package com.example.medicitaapp
 
-import androidx.compose.foundation.Canvas
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,47 +21,74 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.LocalPharmacy
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.medicitaapp.viewmodel.AuthViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun UploadFormulaScreen(
-    onBack: () -> Unit = {}
+    authViewModel: AuthViewModel,
+    onBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedFileType by remember { mutableStateOf("") }
+    var medicamento by remember { mutableStateOf("") }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            selectedFileUri = uri
+            selectedFileType = "image"
+            Toast.makeText(context, "Imagen seleccionada", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val pdfPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            selectedFileUri = uri
+            selectedFileType = "pdf"
+            Toast.makeText(context, "Archivo PDF seleccionado", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Scaffold(
-        containerColor = Color(0xFFF3F5F9),
-        bottomBar = { UploadBottomBar() }
+        containerColor = Color(0xFFF3F5F9)
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -79,15 +109,131 @@ fun UploadFormulaScreen(
 
             FormulaFrameCard()
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = medicamento,
+                onValueChange = { medicamento = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                label = { Text("Medicamento solicitado") },
+                shape = RoundedCornerShape(16.dp)
+            )
+
             Spacer(modifier = Modifier.height(18.dp))
 
-            UploadPrimaryButton()
+            Button(
+                onClick = { imagePickerLauncher.launch("image/*") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp)
+                    .height(58.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2B75DA))
+            ) {
+                Icon(Icons.Filled.CameraAlt, null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("TAKE PHOTO", color = Color.White, fontWeight = FontWeight.Bold)
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            UploadSecondaryButton()
+            Button(
+                onClick = { pdfPickerLauncher.launch("application/pdf") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp)
+                    .height(58.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                border = BorderStroke(1.5.dp, Color(0xFFD9DEE7))
+            ) {
+                Icon(Icons.Filled.UploadFile, null, tint = Color(0xFF2B75DA))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("UPLOAD FILE", color = Color(0xFF243040), fontWeight = FontWeight.Bold)
+            }
 
             Spacer(modifier = Modifier.height(14.dp))
+
+            if (selectedFileUri != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Archivo seleccionado",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1D2433)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text("Tipo: $selectedFileType", color = Color(0xFF6E7786))
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = selectedFileUri.toString(),
+                            fontSize = 12.sp,
+                            color = Color(0xFF6E7786)
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Button(
+                            onClick = {
+                                if (medicamento.isBlank()) {
+                                    Toast.makeText(
+                                        context,
+                                        "Ingrese el medicamento solicitado",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    scope.launch {
+                                        val result = authViewModel.submitFormulaRequest(
+                                            formulaUri = selectedFileUri.toString(),
+                                            formulaType = selectedFileType,
+                                            medicamento = medicamento
+                                        )
+
+                                        result.onSuccess {
+                                            Toast.makeText(
+                                                context,
+                                                "Solicitud enviada correctamente",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            onBack()
+                                        }
+
+                                        result.onFailure {
+                                            Toast.makeText(
+                                                context,
+                                                it.message ?: "Error al guardar",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                        ) {
+                            Text(
+                                text = "Guardar solicitud",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             UploadHelpCard()
 
@@ -97,7 +243,7 @@ fun UploadFormulaScreen(
 }
 
 @Composable
-private fun UploadHeader(
+fun UploadHeader(
     onBack: () -> Unit
 ) {
     Row(
@@ -122,40 +268,26 @@ private fun UploadHeader(
             fontWeight = FontWeight.Bold
         )
     }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(2.dp)
-            .background(Color(0xFF3D4654).copy(alpha = 0.55f))
-    )
 }
 
 @Composable
-private fun UploadProgressSection() {
+fun UploadProgressSection() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .background(Color(0xFFD8E2EF), RoundedCornerShape(10.dp))
         ) {
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF1D66CC))
-            )
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFFD8E2EF))
+                    .fillMaxWidth(0.5f)
+                    .height(6.dp)
+                    .background(Color(0xFF1D66CC), RoundedCornerShape(10.dp))
             )
         }
 
@@ -164,7 +296,6 @@ private fun UploadProgressSection() {
         Text(
             text = "STEP 1 OF 2",
             modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
             color = Color(0xFF2E3542),
             fontSize = 18.sp,
             fontWeight = FontWeight.ExtraBold
@@ -174,8 +305,6 @@ private fun UploadProgressSection() {
 
         Text(
             text = "Take a clear\nphoto of your\npaper formula",
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
             color = Color(0xFF1F2735),
             fontSize = 22.sp,
             lineHeight = 27.sp,
@@ -187,89 +316,45 @@ private fun UploadProgressSection() {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color(0xFFF8F3D9))
-                .border(
-                    width = 1.2.dp,
-                    color = Color(0xFFE7D98F),
-                    shape = RoundedCornerShape(18.dp)
-                )
+                .background(Color(0xFFF8F3D9), RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0xFFE7D98F), RoundedCornerShape(18.dp))
                 .padding(horizontal = 18.dp, vertical = 16.dp)
         ) {
-            TipLine("1. Find a bright room")
+            Text("1. Find a bright room", fontSize = 14.sp)
             Spacer(modifier = Modifier.height(4.dp))
-            TipLine("2. Lay the paper flat")
+            Text("2. Lay the paper flat", fontSize = 14.sp)
             Spacer(modifier = Modifier.height(4.dp))
-            TipLine("3. Keep your hands\nsteady")
+            Text("3. Keep your hands steady", fontSize = 14.sp)
         }
     }
 }
 
 @Composable
-private fun TipLine(text: String) {
-    Text(
-        text = text,
-        color = Color(0xFF454B55),
-        fontSize = 14.sp,
-        lineHeight = 18.sp,
-        fontWeight = FontWeight.SemiBold
-    )
-}
-
-@Composable
-private fun FormulaFrameCard() {
-    Box(
+fun FormulaFrameCard() {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp)
-            .height(220.dp)
+            .padding(horizontal = 14.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBFE))
     ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val strokeWidth = 4.dp.toPx()
-            drawRoundRect(
-                color = Color(0xFFB9C6D8),
-                topLeft = Offset.Zero,
-                size = Size(size.width, size.height),
-                style = Stroke(
-                    width = strokeWidth,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(18f, 12f), 0f),
-                    cap = StrokeCap.Round
-                ),
-                cornerRadius = CornerRadius(28f, 28f)
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp)
-                .align(Alignment.Center)
-                .height(190.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFFF4F6FA))
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .width(170.dp)
-                    .height(120.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White)
-                    .border(
-                        width = 2.dp,
-                        color = Color(0xFF3173D5),
-                        shape = RoundedCornerShape(18.dp)
-                    ),
-                contentAlignment = Alignment.Center
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(2.dp, Color(0xFF3173D5))
             ) {
                 Column(
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.ReceiptLong,
+                        imageVector = Icons.Filled.Description,
                         contentDescription = null,
-                        tint = Color(0xFF3173D5),
-                        modifier = Modifier.size(34.dp)
+                        tint = Color(0xFF3173D5)
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -279,7 +364,6 @@ private fun FormulaFrameCard() {
                         textAlign = TextAlign.Center,
                         color = Color(0xFF1D2433),
                         fontSize = 14.sp,
-                        lineHeight = 18.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
@@ -289,106 +373,20 @@ private fun FormulaFrameCard() {
 }
 
 @Composable
-private fun UploadPrimaryButton() {
-    Button(
-        onClick = { },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp)
-            .height(58.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF2B75DA)
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Filled.CameraAlt,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(20.dp)
-        )
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Text(
-            text = "TAKE PHOTO",
-            color = Color.White,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-    }
-}
-
-@Composable
-private fun UploadSecondaryButton() {
-    Button(
-        onClick = { },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp)
-            .height(58.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.White
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Image,
-            contentDescription = null,
-            tint = Color(0xFF2B75DA),
-            modifier = Modifier.size(20.dp)
-        )
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Text(
-            text = "UPLOAD FILE",
-            color = Color(0xFF243040),
-            fontSize = 17.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-    }
-}
-
-@Composable
-private fun UploadHelpCard() {
+fun UploadHelpCard() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 14.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF182235))
+            .background(Color(0xFF182235), RoundedCornerShape(16.dp))
             .padding(14.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "?",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = "Need help?",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-        }
+        Text(
+            text = "Need help?",
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -396,15 +394,13 @@ private fun UploadHelpCard() {
             text = "If it's difficult to take\na photo, ask someone\nnearby or call us.",
             color = Color(0xFFE3EAF7),
             fontSize = 15.sp,
-            lineHeight = 21.sp,
-            fontWeight = FontWeight.SemiBold
+            lineHeight = 21.sp
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
         Button(
             onClick = { },
-            modifier = Modifier.height(46.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF2B75DA)
@@ -413,8 +409,7 @@ private fun UploadHelpCard() {
             Icon(
                 imageVector = Icons.Filled.Call,
                 contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
+                tint = Color.White
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -426,52 +421,5 @@ private fun UploadHelpCard() {
                 fontWeight = FontWeight.ExtraBold
             )
         }
-    }
-}
-
-@Composable
-private fun UploadBottomBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        BottomItem("HOME", Icons.Filled.Home, false)
-        BottomItem("CLAIMS", Icons.Filled.ReceiptLong, true)
-        BottomItem("PHARMACY", Icons.Filled.LocalPharmacy, false)
-        BottomItem("PROFILE", Icons.Filled.Person, false)
-    }
-}
-
-@Composable
-private fun BottomItem(
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    selected: Boolean
-) {
-    val color = if (selected) Color(0xFF2B75DA) else Color(0xFF8590A2)
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { }
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = text,
-            tint = color,
-            modifier = Modifier.size(20.dp)
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = text,
-            color = color,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold
-        )
     }
 }

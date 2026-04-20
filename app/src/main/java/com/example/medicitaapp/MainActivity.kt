@@ -63,6 +63,8 @@ import com.example.medicitaapp.admin.ReviewFormulaScreen
 import com.example.medicitaapp.ui.theme.MedicitaAppTheme
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
+import com.example.medicitaapp.admin.PharmacistRequestsScreen
+import com.example.medicitaapp.admin.PharmacistHomeScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,6 +81,7 @@ class MainActivity : ComponentActivity() {
 fun AppMedicita() {
     val authViewModel: AuthViewModel = viewModel()
     var screen by remember { mutableStateOf("login") }
+    var selectedRequestId by remember { mutableStateOf(0) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -105,6 +108,7 @@ fun AppMedicita() {
             )
 
             "upload_formula" -> UploadFormulaScreen(
+                authViewModel = authViewModel,
                 onBack = { screen = "home" }
             )
 
@@ -121,12 +125,18 @@ fun AppMedicita() {
                 onBack = { screen = "login" }
             )
 
-            "pharmacist_home" -> PharmacistHomeScreen(
-                onReviewFormula = { screen = "review_formula" },
+            "pharmacist_home" -> PharmacistRequestsScreen(
+                authViewModel = authViewModel,
+                onOpenRequest = { requestId ->
+                    selectedRequestId = requestId
+                    screen = "review_formula"
+                },
                 onBack = { screen = "home" }
             )
 
             "review_formula" -> ReviewFormulaScreen(
+                authViewModel = authViewModel,
+                requestId = selectedRequestId,
                 onBack = { screen = "pharmacist_home" }
             )
         }
