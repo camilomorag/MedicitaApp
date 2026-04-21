@@ -15,9 +15,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import com.example.medicitaapp.data.FormulaRequestEntity
 import com.example.medicitaapp.data.NotificationEntity
+import com.example.medicitaapp.ui.components.StatusBadge
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
-import com.example.medicitaapp.ui.components.StatusBadge
 
 @Composable
 fun NotificationsScreen(
@@ -112,7 +112,7 @@ fun NotificationsScreen(
                             color = Color(0xFF1D2433)
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         StatusBadge(request.estado)
 

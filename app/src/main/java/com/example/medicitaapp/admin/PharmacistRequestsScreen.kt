@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.medicitaapp.data.FormulaRequestEntity
+import com.example.medicitaapp.ui.components.StatusBadge
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
@@ -20,7 +21,8 @@ import kotlinx.coroutines.launch
 fun PharmacistRequestsScreen(
     authViewModel: AuthViewModel,
     onOpenRequest: (Int) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var requests by remember { mutableStateOf<List<FormulaRequestEntity>>(emptyList()) }
@@ -68,6 +70,19 @@ fun PharmacistRequestsScreen(
         }
 
         Button(
+            onClick = {
+                authViewModel.logout()
+                onLogout()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+        ) {
+            Text("Cerrar sesión", color = Color.White, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Button(
             onClick = onBack,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
@@ -98,13 +113,32 @@ fun PharmacistRequestCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(patientName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D2433))
+            Text(
+                text = patientName,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1D2433)
+            )
+
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Documento: $document", fontSize = 13.sp, color = Color(0xFF6E7786))
+
+            Text(
+                text = "Documento: $document",
+                fontSize = 13.sp,
+                color = Color(0xFF6E7786)
+            )
+
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Tipo de archivo: $formulaType", fontSize = 13.sp, color = Color(0xFF6E7786))
+
+            Text(
+                text = "Tipo de archivo: $formulaType",
+                fontSize = 13.sp,
+                color = Color(0xFF6E7786)
+            )
+
             Spacer(modifier = Modifier.height(10.dp))
-            Text(status, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB26A00))
+
+            StatusBadge(status)
         }
     }
 }

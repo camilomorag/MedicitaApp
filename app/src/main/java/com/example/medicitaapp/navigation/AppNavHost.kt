@@ -53,26 +53,40 @@ fun AppNavHost(
         }
 
         composable(AppRoutes.HOME) {
-            HomeScreen(
-                userName = authViewModel.currentUser?.nombre ?: "Usuario",
-                onSubirFormula = { navController.navigate(AppRoutes.UPLOAD) },
-                onVerTurno = { navController.navigate(AppRoutes.QUEUE) },
-                onVerNotificaciones = { navController.navigate(AppRoutes.NOTIFICATIONS) },
-                onVerPerfil = { navController.navigate(AppRoutes.PROFILE) }
-            )
+            if (authViewModel.currentUser == null) {
+                navController.navigate(AppRoutes.LOGIN) {
+                    popUpTo(AppRoutes.HOME) { inclusive = true }
+                }
+            } else {
+                HomeScreen(
+                    userName = authViewModel.currentUser?.nombre ?: "Usuario",
+                    onSubirFormula = { navController.navigate(AppRoutes.UPLOAD) },
+                    onVerTurno = { navController.navigate(AppRoutes.QUEUE) },
+                    onVerNotificaciones = { navController.navigate(AppRoutes.NOTIFICATIONS) },
+                    onVerPerfil = { navController.navigate(AppRoutes.PROFILE) }
+                )
+            }
         }
 
         composable(AppRoutes.UPLOAD) {
-            UploadFormulaScreen(
-                authViewModel = authViewModel,
-                onBack = { navController.popBackStack() }
-            )
+            if (authViewModel.currentUser == null) {
+                navController.navigate(AppRoutes.LOGIN)
+            } else {
+                UploadFormulaScreen(
+                    authViewModel = authViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
 
         composable(AppRoutes.QUEUE) {
-            QueueStatusScreen(
-                onBack = { navController.popBackStack() }
-            )
+            if (authViewModel.currentUser == null) {
+                navController.navigate(AppRoutes.LOGIN)
+            } else {
+                QueueStatusScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
 
         composable(AppRoutes.SUCCESS) {
@@ -86,22 +100,36 @@ fun AppNavHost(
         }
 
         composable(AppRoutes.PROFILE) {
-            UserProfileScreen(
-                authViewModel = authViewModel,
-                onBack = { navController.popBackStack() }
-            )
+            if (authViewModel.currentUser == null) {
+                navController.navigate(AppRoutes.LOGIN)
+            } else {
+                UserProfileScreen(
+                    authViewModel = authViewModel,
+                    onBack = { navController.popBackStack() },
+                    onLogout = {
+                        navController.navigate(AppRoutes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
 
         composable(AppRoutes.NOTIFICATIONS) {
-            NotificationsScreen(
-                authViewModel = authViewModel,
-                onBack = { navController.popBackStack() }
-            )
+            if (authViewModel.currentUser == null) {
+                navController.navigate(AppRoutes.LOGIN)
+            } else {
+                NotificationsScreen(
+                    authViewModel = authViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
 
         composable(AppRoutes.PHARMACIST_LOGIN) {
             PharmacistLoginScreen(
                 onLoginSuccess = {
+                    authViewModel.loginAsPharmacist()
                     navController.navigate(AppRoutes.PHARMACIST_REQUESTS)
                 },
                 onBack = { navController.popBackStack() }
@@ -109,13 +137,22 @@ fun AppNavHost(
         }
 
         composable(AppRoutes.PHARMACIST_REQUESTS) {
-            PharmacistRequestsScreen(
-                authViewModel = authViewModel,
-                onOpenRequest = { requestId ->
-                    navController.navigate("${AppRoutes.REVIEW_FORMULA}/$requestId")
-                },
-                onBack = { navController.popBackStack() }
-            )
+            if (!authViewModel.isPharmacistLoggedIn) {
+                navController.navigate(AppRoutes.PHARMACIST_LOGIN)
+            } else {
+                PharmacistRequestsScreen(
+                    authViewModel = authViewModel,
+                    onOpenRequest = { requestId ->
+                        navController.navigate("${AppRoutes.REVIEW_FORMULA}/$requestId")
+                    },
+                    onBack = { navController.popBackStack() },
+                    onLogout = {
+                        navController.navigate(AppRoutes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
 
         composable("${AppRoutes.REVIEW_FORMULA}/{requestId}") { backStackEntry ->

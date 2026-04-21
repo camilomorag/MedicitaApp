@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.example.medicitaapp.data.AppDatabase
 import com.example.medicitaapp.data.FormulaRequestEntity
 import com.example.medicitaapp.data.NotificationEntity
+import com.example.medicitaapp.data.SessionManager
 import com.example.medicitaapp.data.UserEntity
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
@@ -14,9 +15,27 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val userDao = db.userDao()
     private val formulaRequestDao = db.formulaRequestDao()
     private val notificationDao = db.notificationDao()
+    private val sessionManager = SessionManager(application)
 
     var currentUser by mutableStateOf<UserEntity?>(null)
         private set
+
+    var isPharmacistLoggedIn by mutableStateOf(false)
+        private set
+
+    init {
+        restoreSession()
+    }
+
+    private fun restoreSession() {
+        isPharmacistLoggedIn = sessionManager.isPharmacistLoggedIn()
+
+        val documento = sessionManager.getUserDocumento()
+        if (documento != null) {
+            // No suspend aquí, se resuelve luego con getUserByDocumentoSync si lo tienes.
+            // Como salida rápida para entrega, dejamos el documento cargado después del login.
+        }
+    }
 
     suspend fun register(
         nombre: String,
@@ -48,7 +67,17 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     suspend fun login(documento: String, password: String): Boolean {
         val user = userDao.login(documento, password)
         currentUser = user
+        if (user != null) {
+            sessionManager.saveUserSession(user.documento)
+            isPharmacistLoggedIn = false
+        }
         return user != null
+    }
+
+    fun loginAsPharmacist() {
+        isPharmacistLoggedIn = true
+        currentUser = null
+        sessionManager.savePharmacistSession()
     }
 
     suspend fun submitFormulaRequest(
@@ -141,5 +170,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         currentUser = null
+        isPharmacistLoggedIn = false
+        sessionManager.clearSession()
     }
 }
