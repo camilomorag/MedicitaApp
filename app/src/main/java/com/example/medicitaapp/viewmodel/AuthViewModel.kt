@@ -16,7 +16,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val formulaRequestDao = db.formulaRequestDao()
     private val notificationDao = db.notificationDao()
     private val sessionManager = SessionManager(application)
-
+    private val medicineDao = db.medicineDao()
     var currentUser by mutableStateOf<UserEntity?>(null)
         private set
 
@@ -167,7 +167,29 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             )
         )
     }
+    suspend fun preloadMedicinesIfNeeded(context: android.content.Context) {
+        val current = medicineDao.getAllMedicines()
+        if (current.isEmpty()) {
+            val medicines = com.example.medicitaapp.data.MedicineCsvLoader.loadMedicinesFromCsv(context)
+            medicineDao.insertAll(medicines)
+        }
+    }
 
+    suspend fun getAllMedicines(): List<com.example.medicitaapp.data.MedicineEntity> {
+        return medicineDao.getAllMedicines()
+    }
+
+    suspend fun searchMedicines(query: String): List<com.example.medicitaapp.data.MedicineEntity> {
+        return if (query.isBlank()) {
+            medicineDao.getAllMedicines()
+        } else {
+            medicineDao.searchMedicines(query)
+        }
+    }
+
+    suspend fun getMedicineById(medicineId: Int): com.example.medicitaapp.data.MedicineEntity? {
+        return medicineDao.getMedicineById(medicineId)
+    }
     fun logout() {
         currentUser = null
         isPharmacistLoggedIn = false

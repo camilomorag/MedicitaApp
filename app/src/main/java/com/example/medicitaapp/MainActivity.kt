@@ -37,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,7 +56,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import com.example.medicitaapp.data.AppDatabase
+import com.example.medicitaapp.data.MedicineCsvLoader
 import com.example.medicitaapp.navigation.AppNavHost
 import com.example.medicitaapp.ui.theme.MedicitaAppTheme
 import com.example.medicitaapp.viewmodel.AuthViewModel
@@ -66,16 +70,39 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MedicitaAppTheme {
-                val navController = rememberNavController()
-
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFFF4F6F8)
-                ) {
-                    AppNavHost(navController = navController)
-                }
+                AppRoot()
             }
         }
+    }
+}
+
+@Composable
+fun AppRoot() {
+    val context = LocalContext.current
+    val navController = rememberNavController()
+    val authViewModel: AuthViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        val db = AppDatabase.getDatabase(context)
+        val currentMedicines = db.medicineDao().getAllMedicines()
+
+        if (currentMedicines.isEmpty()) {
+            val medicines = MedicineCsvLoader.loadMedicinesFromCsv(
+                context,
+                "medicamentos.csv"
+            )
+            db.medicineDao().insertAll(medicines)
+        }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color(0xFFF4F6F8)
+    ) {
+        AppNavHost(
+            navController = navController,
+            authViewModel = authViewModel
+        )
     }
 }
 

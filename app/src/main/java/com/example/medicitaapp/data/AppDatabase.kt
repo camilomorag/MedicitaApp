@@ -9,9 +9,10 @@ import androidx.room.RoomDatabase
     entities = [
         UserEntity::class,
         FormulaRequestEntity::class,
-        NotificationEntity::class
+        NotificationEntity::class,
+        MedicineEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -19,6 +20,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun formulaRequestDao(): FormulaRequestDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun medicineDao(): MedicineDao
 
     companion object {
         @Volatile
