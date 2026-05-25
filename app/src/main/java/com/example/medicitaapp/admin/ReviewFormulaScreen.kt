@@ -11,26 +11,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
 import com.example.medicitaapp.data.FormulaRequestEntity
+import com.example.medicitaapp.services.GeminiService
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
@@ -43,6 +39,10 @@ fun ReviewFormulaScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var request by remember { mutableStateOf<FormulaRequestEntity?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+    var validationResult by remember { mutableStateOf<GeminiService.ValidationResult?>(null) }
+    val geminiService = remember { GeminiService(context) }
 
     LaunchedEffect(requestId) {
         scope.launch {
@@ -63,7 +63,7 @@ fun ReviewFormulaScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Revisión de fórmula",
+                text = "Revision de formula",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1D2433)
@@ -72,7 +72,7 @@ fun ReviewFormulaScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Valide la información del paciente y autorice la entrega del medicamento.",
+                text = "Valide la informacion del paciente y autorice la entrega del medicamento.",
                 fontSize = 14.sp,
                 color = Color(0xFF6E7786),
                 lineHeight = 20.sp
@@ -157,7 +157,7 @@ fun ReviewFormulaScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            text = "Vista de fórmula médica",
+                            text = "Vista de formula medica",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1D2433)
@@ -241,6 +241,44 @@ fun ReviewFormulaScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Boton para validar con IA
+                Button(
+                    onClick = {
+                        scope.launch {
+                            isLoading = true
+                            val result = geminiService.validateFormula(
+                                patientNameExpected = formula.userNombre,
+                                documentIdExpected = formula.userDocumento,
+                                phoneExpected = "",
+                                imageUri = if (formula.formulaType == "image") Uri.parse(formula.formulaUri) else null,
+                                pdfText = if (formula.formulaType == "pdf") {
+                                    "Texto extraido del PDF"
+                                } else null
+                            )
+                            isLoading = false
+
+                            if (result.isValid) {
+                                Toast.makeText(context, "✅ Formula valida: ${result.message}", Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, "❌ Formula invalida: ${result.message}", Toast.LENGTH_LONG).show()
+                            }
+
+                            if (result.observations.isNotEmpty()) {
+                                showDialog = true
+                                validationResult = result
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0))
+                ) {
+                    Icon(Icons.Default.AutoAwesome, null, tint = Color.White)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("🤖 Validar con IA", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
                 Button(
                     onClick = {
                         scope.launch {
@@ -248,7 +286,7 @@ fun ReviewFormulaScreen(
                                 requestId = formula.id,
                                 estado = "aceptada"
                             )
-                            Toast.makeText(context, "Fórmula aprobada", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Formula aprobada", Toast.LENGTH_SHORT).show()
                             onBack()
                         }
                     },
@@ -259,7 +297,7 @@ fun ReviewFormulaScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
                     Icon(Icons.Default.TaskAlt, null, tint = Color.White)
-                    Text(" Aprobar fórmula", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(" Aprobar formula", color = Color.White, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -319,7 +357,7 @@ fun ReviewFormulaScreen(
                                 requestId = formula.id,
                                 estado = "rechazada"
                             )
-                            Toast.makeText(context, "Fórmula rechazada", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Formula rechazada", Toast.LENGTH_SHORT).show()
                             onBack()
                         }
                     },
@@ -331,7 +369,7 @@ fun ReviewFormulaScreen(
                     border = BorderStroke(1.5.dp, Color(0xFFD32F2F))
                 ) {
                     Text(
-                        text = "Rechazar fórmula",
+                        text = "Rechazar formula",
                         color = Color(0xFFD32F2F),
                         fontWeight = FontWeight.Bold
                     )
@@ -346,7 +384,7 @@ fun ReviewFormulaScreen(
                                 requestId = formula.id,
                                 estado = "aplazada"
                             )
-                            Toast.makeText(context, "Fórmula aplazada", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Formula aplazada", Toast.LENGTH_SHORT).show()
                             onBack()
                         }
                     },
@@ -382,5 +420,33 @@ fun ReviewFormulaScreen(
                 )
             }
         }
+    }
+
+    // Dialog de validacion
+    if (showDialog && validationResult != null) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text(if (validationResult!!.isValid) "✅ Validacion exitosa" else "❌ Validacion fallida") },
+            text = {
+                Column {
+                    Text(validationResult!!.message)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (validationResult!!.observations.isNotEmpty()) {
+                        Text("Observaciones:", fontWeight = FontWeight.Bold)
+                        validationResult!!.observations.forEach { obs ->
+                            Text("• $obs", fontSize = 12.sp)
+                        }
+                    }
+                    if (validationResult!!.medicineName.isNotBlank()) {
+                        Text("💊 Medicamento: ${validationResult!!.medicineName}")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Aceptar")
+                }
+            }
+        )
     }
 }

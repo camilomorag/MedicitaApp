@@ -68,7 +68,11 @@ dependencies {
 
     // Para corutinas
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // Gemini API
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
+    // Para imágenes (Gemini Vision)
+    implementation("com.google.guava:guava:33.0.0-android")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
