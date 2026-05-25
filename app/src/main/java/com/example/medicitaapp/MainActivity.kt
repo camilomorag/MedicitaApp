@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -523,32 +525,17 @@ fun LoginScreen(
     }
 }
 
+
 @Composable
 fun TopIcon() {
-    Box(
+    Image(
+        painter = painterResource(id = R.drawable.medicita),
+        contentDescription = "Logo Medicita",
         modifier = Modifier
-            .size(72.dp)
+            .size(120.dp)
             .clip(CircleShape)
-            .background(Color(0xFFDCEBFF)),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF4A8CFF)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "+",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp
-            )
-        }
-    }
+    )
 }
-
 @Composable
 fun customTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = Color(0xFFD9DEE7),
