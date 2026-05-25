@@ -13,6 +13,8 @@ import com.example.medicitaapp.RegisterScreen
 import com.example.medicitaapp.UploadFormulaScreen
 import com.example.medicitaapp.admin.PharmacistLoginScreen
 import com.example.medicitaapp.admin.PharmacistRequestsScreen
+import com.example.medicitaapp.admin.PharmacistMedicinesScreen
+import com.example.medicitaapp.admin.MedicineDetailScreen
 import com.example.medicitaapp.admin.ReviewFormulaScreen
 import com.example.medicitaapp.user.NotificationsScreen
 import com.example.medicitaapp.user.UserProfileScreen
@@ -145,14 +147,44 @@ fun AppNavHost(
                     onOpenRequest = { requestId ->
                         navController.navigate("${AppRoutes.REVIEW_FORMULA}/$requestId")
                     },
+                    onManageMedicines = {
+                        navController.navigate(AppRoutes.PHARMACIST_MEDICINES)
+                    },
                     onBack = { navController.popBackStack() },
                     onLogout = {
+
+                        authViewModel.logout()
                         navController.navigate(AppRoutes.LOGIN) {
                             popUpTo(0) { inclusive = true }
                         }
                     }
                 )
             }
+        }
+
+        composable(AppRoutes.PHARMACIST_MEDICINES) {
+            if (!authViewModel.isPharmacistLoggedIn) {
+                navController.navigate(AppRoutes.PHARMACIST_LOGIN)
+            } else {
+                PharmacistMedicinesScreen(
+                    authViewModel = authViewModel,
+                    onOpenMedicine = { medicineId ->
+                        navController.navigate("medicine_detail/$medicineId")
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+        }
+
+        composable("medicine_detail/{medicineId}") { backStackEntry ->
+            val medicineId = backStackEntry.arguments
+                ?.getString("medicineId")
+                ?.toIntOrNull() ?: 0
+            MedicineDetailScreen(
+                authViewModel = authViewModel,
+                medicineId = medicineId,
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable("${AppRoutes.REVIEW_FORMULA}/{requestId}") { backStackEntry ->

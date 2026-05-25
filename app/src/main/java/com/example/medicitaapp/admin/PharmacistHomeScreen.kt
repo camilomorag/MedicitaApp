@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun PharmacistHomeScreen(
     onReviewFormula: () -> Unit,
+    onManageMedicines: () -> Unit,  // nuevo parámetro
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -139,6 +140,26 @@ fun PharmacistHomeScreen(
             )
 
             Spacer(modifier = Modifier.height(20.dp))
+
+            // ===== BOTÓN ADMINISTRAR MEDICAMENTOS (NUEVO) =====
+            Button(
+                onClick = onManageMedicines,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C63FF))
+            ) {
+                Icon(Icons.Default.LocalPharmacy, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Administrar medicamentos",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Button(
                 onClick = onBack,

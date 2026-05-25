@@ -2,6 +2,7 @@ package com.example.medicitaapp
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,6 +31,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -81,17 +83,27 @@ fun AppRoot() {
     val context = LocalContext.current
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel()
+    var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        val db = AppDatabase.getDatabase(context)
-        val currentMedicines = db.medicineDao().getAllMedicines()
+        try {
+            Log.d("AppRoot", "🚀 Iniciando AppRoot...")
 
-        if (currentMedicines.isEmpty()) {
-            val medicines = MedicineCsvLoader.loadMedicinesFromCsv(
-                context,
-                "medicamentos.csv"
-            )
-            db.medicineDao().insertAll(medicines)
+            // Usar la función mejorada de AuthViewModel
+            authViewModel.preloadMedicinesIfNeeded(context)
+
+            // Verificar después de cargar
+            val db = AppDatabase.getDatabase(context)
+            val medicinesAfter = db.medicineDao().getAllMedicines()
+            Log.d("AppRoot", "✅ Medicamentos después de cargar: ${medicinesAfter.size}")
+
+            if (medicinesAfter.isEmpty()) {
+                Log.e("AppRoot", "⚠️ No hay medicamentos en la base de datos")
+            }
+        } catch (e: Exception) {
+            Log.e("AppRoot", "❌ Error fatal: ${e.message}", e)
+        } finally {
+            isLoading = false
         }
     }
 
@@ -99,13 +111,25 @@ fun AppRoot() {
         modifier = Modifier.fillMaxSize(),
         color = Color(0xFFF4F6F8)
     ) {
-        AppNavHost(
-            navController = navController,
-            authViewModel = authViewModel
-        )
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Cargando medicamentos...")
+            }
+        } else {
+            AppNavHost(
+                navController = navController,
+                authViewModel = authViewModel
+            )
+        }
     }
 }
 
+// ... (resto de tu código LoginScreen, TopIcon, customTextFieldColors se mantienen igual)
 @Composable
 fun LoginScreen(
     authViewModel: AuthViewModel,

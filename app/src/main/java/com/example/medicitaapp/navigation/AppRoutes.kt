@@ -11,7 +11,11 @@ object AppRoutes {
     const val NOTIFICATIONS = "notifications"
     const val PHARMACIST_LOGIN = "pharmacist_login"
     const val PHARMACIST_REQUESTS = "pharmacist_requests"
+    const val PHARMACIST_MEDICINES = "pharmacist_medicines"  // ✅ Agrega esta
+
     const val REVIEW_FORMULA = "review_formula"
-    const val PHARMACIST_MEDICINES = "pharmacist_medicines"
+
     const val MEDICINE_DETAIL = "medicine_detail"
+
+
 }

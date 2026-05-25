@@ -4,7 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -21,6 +24,7 @@ import kotlinx.coroutines.launch
 fun PharmacistRequestsScreen(
     authViewModel: AuthViewModel,
     onOpenRequest: (Int) -> Unit,
+    onManageMedicines: () -> Unit,  // Nuevo parámetro
     onBack: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -68,6 +72,30 @@ fun PharmacistRequestsScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
+
+        // ✅ NUEVO BOTÓN: Administrar medicamentos
+        Button(
+            onClick = onManageMedicines,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C63FF))
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocalPharmacy,
+                contentDescription = null,
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Administrar medicamentos",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Button(
             onClick = {

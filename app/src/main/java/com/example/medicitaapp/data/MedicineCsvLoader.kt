@@ -10,45 +10,118 @@ object MedicineCsvLoader {
         fileName: String = "medicamentos.csv"
     ): List<MedicineEntity> {
         val medicines = mutableListOf<MedicineEntity>()
+        val seenProducts = mutableSetOf<String>()
 
         return try {
-            val inputStream = context.assets.open(fileName)
-            val lines = inputStream.bufferedReader(Charsets.UTF_8).readLines()
+            Log.d("MedicineCsvLoader", "=== INICIANDO CARGA DE CSV: $fileName ===")
 
-            if (lines.isEmpty()) return medicines
+            // Verificar si el archivo existe
+            val assetFileList = context.assets.list("")
+            val fileExists = assetFileList?.contains(fileName) ?: false
+
+            if (!fileExists) {
+                Log.e("MedicineCsvLoader", "❌ El archivo $fileName NO existe en assets")
+                Log.d("MedicineCsvLoader", "Archivos disponibles: ${assetFileList?.joinToString()}")
+                return emptyList()
+            }
+
+            Log.d("MedicineCsvLoader", "✅ Archivo encontrado: $fileName")
+
+            val inputStream = context.assets.open(fileName)
+            val content = inputStream.bufferedReader(Charsets.UTF_8).readText()
+            val lines = content.lines()
+
+            if (lines.isEmpty()) {
+                Log.e("MedicineCsvLoader", "El archivo está vacío")
+                return emptyList()
+            }
+
+            // Detectar separador automáticamente
+            val firstLine = lines[0]
+            val separator = if (firstLine.contains(";")) ";" else if (firstLine.contains(",")) "," else ";"
+            Log.d("MedicineCsvLoader", "🔍 Separador detectado: '$separator'")
+            Log.d("MedicineCsvLoader", "📋 Encabezado: ${firstLine.take(200)}")
+
+            // Identificar índices de columnas importantes
+            val headerParts = firstLine.lowercase().split(separator)
+            val productoIndex = headerParts.indexOfFirst { it.contains("producto") }
+            val expedienteIndex = headerParts.indexOfFirst { it.contains("expediente") }
+            val registroIndex = headerParts.indexOfFirst { it.contains("registrosanitario") }
+            val titularIndex = headerParts.indexOfFirst { it.contains("titular") }
+            val estadoIndex = headerParts.indexOfFirst { it.contains("estadoregistro") }
+            val viaIndex = headerParts.indexOfFirst { it.contains("viaadministracion") }
+
+            Log.d("MedicineCsvLoader", "📊 Índices - Producto:$productoIndex, Expediente:$expedienteIndex, Registro:$registroIndex")
 
             // Saltar encabezado
             for (i in 1 until lines.size) {
                 val line = lines[i]
-
                 if (line.isBlank()) continue
 
-                // En estos CSV normalmente el separador es ;
-                val parts = line.split(";")
+                val parts = line.split(separator)
 
-                // Leemos hasta índice 15, así que mínimo 16 columnas
-                if (parts.size >= 16) {
+                // Obtener valores según los índices detectados
+                val producto = if (productoIndex >= 0 && productoIndex < parts.size)
+                    parts[productoIndex].trim().replace("\"", "").replace("@", "®") else ""
+
+                val expediente = if (expedienteIndex >= 0 && expedienteIndex < parts.size)
+                    parts[expedienteIndex].trim().replace("\"", "") else ""
+
+                val registroSanitario = if (registroIndex >= 0 && registroIndex < parts.size)
+                    parts[registroIndex].trim().replace("\"", "") else ""
+
+                val titular = if (titularIndex >= 0 && titularIndex < parts.size)
+                    parts[titularIndex].trim().replace("\"", "") else "No especificado"
+
+                val estadoRegistro = if (estadoIndex >= 0 && estadoIndex < parts.size)
+                    parts[estadoIndex].trim().replace("\"", "") else "Vigente"
+
+                val viaAdministracion = if (viaIndex >= 0 && viaIndex < parts.size)
+                    parts[viaIndex].trim().replace("\"", "") else ""
+
+                // Evitar duplicados
+                if (producto.isNotBlank() && producto.length > 3 && !seenProducts.contains(producto)) {
+                    seenProducts.add(producto)
+
                     medicines.add(
                         MedicineEntity(
-                            expediente = parts.getOrNull(0)?.trim().orEmpty(),
-                            producto = parts.getOrNull(1)?.trim().orEmpty(),
-                            titular = parts.getOrNull(2)?.trim().orEmpty(),
-                            registroSanitario = parts.getOrNull(3)?.trim().orEmpty(),
-                            fechaExpedicion = parts.getOrNull(4)?.trim().orEmpty(),
-                            fechaVencimiento = parts.getOrNull(5)?.trim().orEmpty(),
-                            estadoRegistro = parts.getOrNull(6)?.trim().orEmpty(),
-                            descripcion = parts.getOrNull(10)?.trim().orEmpty(),
-                            estadoComercial = parts.getOrNull(11)?.trim().orEmpty(),
-                            unidad = parts.getOrNull(15)?.trim().orEmpty(),
-                            disponible = true
+                            expediente = if (expediente.isBlank()) "N/A" else expediente,
+                            producto = producto.take(150),
+                            titular = titular.take(100),
+                            registroSanitario = if (registroSanitario.isBlank()) "N/A" else registroSanitario,
+                            fechaExpedicion = "",
+                            fechaVencimiento = "",
+                            estadoRegistro = if (estadoRegistro.isBlank()) "Vigente" else estadoRegistro,
+                            descripcion = if (viaAdministracion.isNotBlank()) "Vía: $viaAdministracion" else "Medicamento registrado",
+                            estadoComercial = "Activo",
+                            unidad = "U",
+                            disponible = estadoRegistro.equals("Vigente", ignoreCase = true)
                         )
                     )
                 }
+
+                // Limitar a 5000 para evitar problemas de memoria
+                if (medicines.size >= 5000) {
+                    Log.d("MedicineCsvLoader", "Límite de 5000 medicamentos alcanzado")
+                    break
+                }
+
+                // Mostrar progreso
+                if (i % 10000 == 0) {
+                    Log.d("MedicineCsvLoader", "📊 Procesadas $i líneas... (${medicines.size} medicamentos)")
+                }
+            }
+
+            Log.d("MedicineCsvLoader", "=== CARGA COMPLETADA ===")
+            Log.d("MedicineCsvLoader", "💊 Medicamentos únicos cargados: ${medicines.size}")
+
+            if (medicines.isEmpty()) {
+                Log.w("MedicineCsvLoader", "⚠️ No se cargaron medicamentos")
             }
 
             medicines
         } catch (e: Exception) {
-            Log.e("MedicineCsvLoader", "Error leyendo CSV: ${e.message}", e)
+            Log.e("MedicineCsvLoader", "❌ Error: ${e.message}", e)
             emptyList()
         }
     }

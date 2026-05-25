@@ -19,4 +19,7 @@ interface MedicineDao {
 
     @Query("SELECT * FROM medicines WHERE id = :medicineId LIMIT 1")
     suspend fun getMedicineById(medicineId: Int): MedicineEntity?
+
+    @Query("DELETE FROM medicines")
+    suspend fun deleteAll()
 }

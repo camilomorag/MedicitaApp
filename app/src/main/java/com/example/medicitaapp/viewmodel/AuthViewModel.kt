@@ -1,13 +1,13 @@
 package com.example.medicitaapp.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
-import com.example.medicitaapp.data.AppDatabase
-import com.example.medicitaapp.data.FormulaRequestEntity
-import com.example.medicitaapp.data.NotificationEntity
-import com.example.medicitaapp.data.SessionManager
-import com.example.medicitaapp.data.UserEntity
+import com.example.medicitaapp.data.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -17,6 +17,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val notificationDao = db.notificationDao()
     private val sessionManager = SessionManager(application)
     private val medicineDao = db.medicineDao()
+
     var currentUser by mutableStateOf<UserEntity?>(null)
         private set
 
@@ -29,11 +30,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun restoreSession() {
         isPharmacistLoggedIn = sessionManager.isPharmacistLoggedIn()
-
         val documento = sessionManager.getUserDocumento()
         if (documento != null) {
-            // No suspend aquí, se resuelve luego con getUserByDocumentoSync si lo tienes.
-            // Como salida rápida para entrega, dejamos el documento cargado después del login.
+            // Se cargará luego con login
         }
     }
 
@@ -45,7 +44,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     ): Result<String> {
         return try {
             val existing = userDao.getUserByDocumento(documento)
-
             if (existing != null) {
                 Result.failure(Exception("El usuario ya existe"))
             } else {
@@ -86,7 +84,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     ): Result<String> {
         return try {
             val user = currentUser ?: return Result.failure(Exception("No hay usuario logueado"))
-
             val request = FormulaRequestEntity(
                 userDocumento = user.documento,
                 userNombre = user.nombre,
@@ -95,9 +92,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 medicamento = "Pendiente de validación",
                 estado = "pendiente"
             )
-
             formulaRequestDao.insertRequest(request)
-
             notificationDao.insertNotification(
                 NotificationEntity(
                     userDocumento = user.documento,
@@ -105,7 +100,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     message = "Su fórmula fue enviada correctamente y está pendiente de revisión."
                 )
             )
-
             Result.success("Solicitud enviada")
         } catch (e: Exception) {
             Result.failure(e)
@@ -138,7 +132,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         ubicacion: String = ""
     ) {
         val request = formulaRequestDao.getRequestById(requestId) ?: return
-
         formulaRequestDao.updateRequestStatus(
             requestId = requestId,
             estado = estado,
@@ -146,7 +139,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             turno = turno,
             ubicacion = ubicacion
         )
-
         val message = when (estado) {
             "aceptada" -> "Su fórmula fue aceptada."
             "rechazada" -> "Su fórmula fue rechazada."
@@ -154,7 +146,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             "lista" -> "Su medicamento está listo para reclamar."
             else -> "Su solicitud fue actualizada."
         }
-
         notificationDao.insertNotification(
             NotificationEntity(
                 userDocumento = request.userDocumento,
@@ -167,19 +158,119 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             )
         )
     }
-    suspend fun preloadMedicinesIfNeeded(context: android.content.Context) {
-        val current = medicineDao.getAllMedicines()
-        if (current.isEmpty()) {
-            val medicines = com.example.medicitaapp.data.MedicineCsvLoader.loadMedicinesFromCsv(context)
-            medicineDao.insertAll(medicines)
+
+    // ============================================
+    // FUNCIONES PARA CARGAR MEDICAMENTOS DESDE API
+    // ============================================
+
+    /**
+     * Función para cargar medicamentos desde la API del gobierno
+     */
+    suspend fun loadMedicinesFromApi(): List<MedicineEntity> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("AuthViewModel", "🔄 Cargando medicamentos desde API...")
+
+                val medicines = mutableListOf<MedicineEntity>()
+                var offset = 0
+                val limit = 500
+                var hasMore = true
+
+                while (hasMore && medicines.size < 2000) {
+                    val response = RetrofitClient.instance.getMedicines(
+                        limit = limit,
+                        offset = offset
+                    )
+
+                    if (response.isEmpty()) {
+                        hasMore = false
+                        Log.d("AuthViewModel", "🏁 No hay más medicamentos en la API")
+                    } else {
+                        response.forEach { apiMedicine ->
+                            if (!apiMedicine.producto.isNullOrBlank()) {
+                                medicines.add(
+                                    MedicineEntity(
+                                        expediente = apiMedicine.expediente ?: "N/A",
+                                        producto = apiMedicine.producto!!.take(150),
+                                        titular = apiMedicine.titular ?: "No especificado",
+                                        registroSanitario = apiMedicine.registrosanitario ?: "N/A",
+                                        fechaExpedicion = apiMedicine.fechaexpedicion ?: "",
+                                        fechaVencimiento = apiMedicine.fechavencimiento ?: "",
+                                        estadoRegistro = apiMedicine.estadoregistro ?: "Vigente",
+                                        descripcion = buildString {
+                                            if (!apiMedicine.principioactivo.isNullOrBlank()) {
+                                                append("Principio activo: ${apiMedicine.principioactivo}\n")
+                                            }
+                                            if (!apiMedicine.viaadministracion.isNullOrBlank()) {
+                                                append("Vía: ${apiMedicine.viaadministracion}\n")
+                                            }
+                                            if (!apiMedicine.formafarmaceutica.isNullOrBlank()) {
+                                                append("Forma: ${apiMedicine.formafarmaceutica}")
+                                            }
+                                        }.take(200),
+                                        estadoComercial = "Activo",
+                                        unidad = apiMedicine.unidad ?: "U",
+                                        disponible = apiMedicine.estadoregistro?.equals("Vigente", ignoreCase = true) ?: true
+                                    )
+                                )
+                            }
+                        }
+
+                        offset += limit
+                        Log.d("AuthViewModel", "📦 Cargados ${medicines.size} medicamentos hasta ahora...")
+                    }
+                }
+
+                Log.d("AuthViewModel", "✅ Total medicamentos cargados desde API: ${medicines.size}")
+                medicines
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "❌ Error cargando desde API: ${e.message}", e)
+                emptyList()
+            }
         }
     }
 
-    suspend fun getAllMedicines(): List<com.example.medicitaapp.data.MedicineEntity> {
+    /**
+     * Función mejorada para precargar medicamentos (API primero, CSV como respaldo)
+     */
+    suspend fun preloadMedicinesIfNeeded(context: Context) {
+        try {
+            val current = medicineDao.getAllMedicines()
+            Log.d("AuthViewModel", "📊 Medicamentos en DB: ${current.size}")
+
+            if (current.isEmpty()) {
+                Log.d("AuthViewModel", "🔄 No hay medicamentos en DB, cargando desde API...")
+
+                // Intentar cargar desde API primero
+                val apiMedicines = loadMedicinesFromApi()
+
+                if (apiMedicines.isNotEmpty()) {
+                    medicineDao.insertAll(apiMedicines)
+                    Log.d("AuthViewModel", "✅ ${apiMedicines.size} medicamentos guardados desde API")
+                } else {
+                    // Fallback a CSV si API falla
+                    Log.w("AuthViewModel", "⚠️ API falló, intentando con CSV...")
+                    val csvMedicines = MedicineCsvLoader.loadMedicinesFromCsv(context)
+                    if (csvMedicines.isNotEmpty()) {
+                        medicineDao.insertAll(csvMedicines)
+                        Log.d("AuthViewModel", "✅ ${csvMedicines.size} medicamentos guardados desde CSV")
+                    } else {
+                        Log.e("AuthViewModel", "❌ No se pudo cargar medicamentos desde API ni CSV")
+                    }
+                }
+            } else {
+                Log.d("AuthViewModel", "✅ Ya hay ${current.size} medicamentos en DB")
+            }
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "❌ Error en preloadMedicinesIfNeeded: ${e.message}", e)
+        }
+    }
+
+    suspend fun getAllMedicines(): List<MedicineEntity> {
         return medicineDao.getAllMedicines()
     }
 
-    suspend fun searchMedicines(query: String): List<com.example.medicitaapp.data.MedicineEntity> {
+    suspend fun searchMedicines(query: String): List<MedicineEntity> {
         return if (query.isBlank()) {
             medicineDao.getAllMedicines()
         } else {
@@ -187,9 +278,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun getMedicineById(medicineId: Int): com.example.medicitaapp.data.MedicineEntity? {
+    suspend fun getMedicineById(medicineId: Int): MedicineEntity? {
         return medicineDao.getMedicineById(medicineId)
     }
+
     fun logout() {
         currentUser = null
         isPharmacistLoggedIn = false
