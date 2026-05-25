@@ -117,20 +117,16 @@ fun AppRoot() {
         try {
             Log.d("AppRoot", "Iniciando AppRoot...")
 
-            // Inicializar servicio de notificaciones
-            authViewModel.initNotificationService(context)
+            // ✅ Inicializar servicios (NOTIFICACIONES + GEMINI)
+            authViewModel.initServices(context)  // ← Cambia esto
 
-            // Usar la funcion mejorada de AuthViewModel
+            // Cargar medicamentos
             authViewModel.preloadMedicinesIfNeeded(context)
 
-            // Verificar despues de cargar
             val db = AppDatabase.getDatabase(context)
             val medicinesAfter = db.medicineDao().getAllMedicines()
-            Log.d("AppRoot", "Medicamentos despues de cargar: ${medicinesAfter.size}")
+            Log.d("AppRoot", "Medicamentos después de cargar: ${medicinesAfter.size}")
 
-            if (medicinesAfter.isEmpty()) {
-                Log.e("AppRoot", "No hay medicamentos en la base de datos")
-            }
         } catch (e: Exception) {
             Log.e("AppRoot", "Error fatal: ${e.message}", e)
         } finally {
@@ -149,7 +145,7 @@ fun AppRoot() {
             ) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Cargando medicamentos...")
+                Text("Cargando...")
             }
         } else {
             AppNavHost(

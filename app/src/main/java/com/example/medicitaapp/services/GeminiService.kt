@@ -22,10 +22,7 @@ class GeminiService(private val context: Context) {
 
     companion object {
         private const val API_KEY = "AIzaSyCwmlJIobZRsQ-Q7wkB-ut-XS_PCe40zN0"
-        // 🔄 REEMPLAZA EL VIEJO "gemini-1.5-flash" POR ESTE:
         private const val MODEL_NAME = "gemini-2.5-flash"
-
-        // La URL se armará automáticamente de forma correcta
         private val API_URL = "https://generativelanguage.googleapis.com/v1/models/$MODEL_NAME:generateContent?key=$API_KEY"
     }
 
@@ -44,7 +41,7 @@ class GeminiService(private val context: Context) {
         val isValidDate: Boolean = true,
         val isReadable: Boolean = true,
         val message: String = "",
-        val observations: List<String> = emptyList()
+        val observations: List<String> = emptyList()  // ✅ Campo agregado
     )
 
     suspend fun validateFormula(
@@ -69,7 +66,11 @@ class GeminiService(private val context: Context) {
                 response
             } catch (e: Exception) {
                 Log.e("GeminiService", "❌ Error: ${e.message}", e)
-                ValidationResult(isValid = false, message = "Error: ${e.message}")
+                ValidationResult(
+                    isValid = false,
+                    message = "Error: ${e.message}",
+                    observations = listOf("Error en la validación")
+                )
             }
         }
     }
@@ -77,7 +78,11 @@ class GeminiService(private val context: Context) {
     private suspend fun validateWithImage(prompt: String, imageUri: Uri): ValidationResult {
         val imageBytes = loadImageAsBytes(imageUri)
         if (imageBytes == null) {
-            return ValidationResult(isValid = false, message = "No se pudo cargar la imagen")
+            return ValidationResult(
+                isValid = false,
+                message = "No se pudo cargar la imagen",
+                observations = listOf("La imagen no se pudo cargar correctamente")
+            )
         }
 
         val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
@@ -86,11 +91,9 @@ class GeminiService(private val context: Context) {
             put("contents", JSONArray().apply {
                 put(JSONObject().apply {
                     put("parts", JSONArray().apply {
-                        // 1. Primero el texto del Prompt para dar contexto
                         put(JSONObject().apply {
                             put("text", prompt)
                         })
-                        // 2. Después los datos binarios de la imagen
                         put(JSONObject().apply {
                             put("inlineData", JSONObject().apply {
                                 put("mimeType", "image/jpeg")
@@ -100,7 +103,6 @@ class GeminiService(private val context: Context) {
                     })
                 })
             })
-            // Conservamos solo los parámetros estándar y universales de configuración
             put("generationConfig", JSONObject().apply {
                 put("temperature", 0.2)
                 put("maxOutputTokens", 1024)
@@ -161,7 +163,8 @@ class GeminiService(private val context: Context) {
             Log.e("GeminiService", "Error HTTP: $responseBody")
             ValidationResult(
                 isValid = false,
-                message = "Error en la API: Código ${response.code} - ${responseBody.take(100)}"
+                message = "Error en la API: Código ${response.code}",
+                observations = listOf("Error en la comunicación con el servidor")
             )
         }
     }
@@ -189,12 +192,12 @@ class GeminiService(private val context: Context) {
         phoneExpected: String
     ): String {
         return """
-            Eres un farmacéutico. Analiza esta fórmula médica.
+            Eres un farmaceutico. Analiza esta formula medica.
             
             Datos del paciente que debes verificar:
             - Nombre: $patientNameExpected
             - Documento: $documentIdExpected
-            - Teléfono: $phoneExpected
+            - Telefono: $phoneExpected
             
             Responde SOLO con este JSON:
             {
@@ -202,10 +205,11 @@ class GeminiService(private val context: Context) {
                 "patientName": "$patientNameExpected",
                 "documentId": "$documentIdExpected",
                 "medicineName": "Nombre del medicamento encontrado",
-                "message": "Validación exitosa"
+                "message": "Validacion exitosa",
+                "observations": []
             }
             
-            Si algo no coincide, pon isValid=false.
+            Si algo no coincide, pon isValid=false y explica en observations que no coincide.
         """.trimIndent()
     }
 
@@ -224,19 +228,29 @@ class GeminiService(private val context: Context) {
 
             val resultJson = JSONObject(cleanJson)
 
+            // ✅ Extraer observaciones del JSON
+            val observationsList = mutableListOf<String>()
+            val observationsArray = resultJson.optJSONArray("observations")
+            if (observationsArray != null) {
+                for (i in 0 until observationsArray.length()) {
+                    observationsList.add(observationsArray.getString(i))
+                }
+            }
+
             ValidationResult(
                 isValid = resultJson.optBoolean("isValid", true),
                 patientName = resultJson.optString("patientName", ""),
                 documentId = resultJson.optString("documentId", ""),
                 medicineName = resultJson.optString("medicineName", ""),
-                message = resultJson.optString("message", "Validación completada")
+                message = resultJson.optString("message", "Validacion completada"),
+                observations = observationsList  // ✅ Asignar observaciones
             )
         } catch (e: Exception) {
             Log.e("GeminiService", "Error parseando: ${e.message}")
             ValidationResult(
                 isValid = true,
-                message = "Validación automática completada",
-                observations = listOf("Revise manualmente la fórmula")
+                message = "Validacion automatica completada",
+                observations = listOf("Revise manualmente la formula")
             )
         }
     }

@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         NotificationEntity::class,
         MedicineEntity::class
     ],
-    version = 4,  // ✅ Cambia de 3 a 4
+    version =6,  // ✅ Cambia de 4 a 5
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -2,10 +2,12 @@ package com.example.medicitaapp.viewmodel
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import com.example.medicitaapp.data.*
+import com.example.medicitaapp.services.GeminiService
 import com.example.medicitaapp.services.NotificationService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,6 +22,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val medicineDao = db.medicineDao()
 
     lateinit var notificationService: NotificationService
+    private lateinit var geminiService: GeminiService
 
     var currentUser by mutableStateOf<UserEntity?>(null)
         private set
@@ -31,8 +34,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         restoreSession()
     }
 
-    fun initNotificationService(context: Context) {
+    fun initServices(context: Context) {
         notificationService = NotificationService(context)
+        geminiService = GeminiService(context)
     }
 
     private fun restoreSession() {
@@ -85,6 +89,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         sessionManager.savePharmacistSession()
     }
 
+    // ============================================
+    // FORMULAS - VERSIÓN SIMPLIFICADA (SIN IA)
+    // ============================================
+
     suspend fun submitFormulaRequest(
         formulaUri: String,
         formulaType: String
@@ -92,31 +100,66 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return try {
             val user = currentUser ?: return Result.failure(Exception("No hay usuario logueado"))
 
-            val request = FormulaRequestEntity(
-                userDocumento = user.documento,
-                userNombre = user.nombre,
-                formulaUri = formulaUri,
-                formulaType = formulaType,
-                medicamento = "Pendiente de validación",
-                estado = "pendiente"
+            // 1. Insertar la solicitud
+            val requestId = formulaRequestDao.insertRequest(
+                FormulaRequestEntity(
+                    userDocumento = user.documento,
+                    userNombre = user.nombre,
+                    formulaUri = formulaUri,
+                    formulaType = formulaType,
+                    medicamento = "Pendiente de validación",
+                    estado = "pendiente"
+                )
+            ).toInt()
+
+            // 2. VALIDACIÓN CON IA
+            val validationResult = geminiService.validateFormula(
+                patientNameExpected = user.nombre,
+                documentIdExpected = user.documento,
+                phoneExpected = user.telefono,
+                imageUri = if (formulaType == "image") Uri.parse(formulaUri) else null,
+                pdfText = null
             )
 
-            formulaRequestDao.insertRequest(request)
+            // 3. Guardar resultado de la IA
+            val mensajeValidacion = if (validationResult.isValid) {
+                "✅ Validación exitosa: ${validationResult.message}"
+            } else {
+                "❌ Validación fallida: ${validationResult.message}"
+            }
+            val observacionesValidacion = validationResult.observations.joinToString("\n")
 
-            // 📢 Notificación para el usuario
+            formulaRequestDao.updateValidationResult(
+                requestId = requestId,
+                validacionIA = validationResult.isValid,
+                mensajeValidacion = mensajeValidacion,
+                observacionesValidacion = observacionesValidacion
+            )
+
+            // 4. Si la validación falló, notificar al farmaceuta
+            if (!validationResult.isValid) {
+                notificationService.showNewFormulaForPharmacistNotification(user.nombre)
+            }
+
+            // 5. Notificación al usuario
             notificationService.showFormulaSubmittedNotification("Pendiente de validación")
-
-            // Guardar notificación en DB
             notificationDao.insertNotification(
                 NotificationEntity(
                     userDocumento = user.documento,
-                    title = "📄 Fórmula enviada",
-                    message = "Tu fórmula ha sido enviada correctamente y está pendiente de revisión."
+                    title = if (validationResult.isValid) "📄 Fórmula enviada" else "⚠️ Fórmula con problemas",
+                    message = mensajeValidacion
                 )
             )
 
-            Result.success("Solicitud enviada")
+            val mensajeFinal = if (validationResult.isValid) {
+                "✅ Fórmula válida. Enviada correctamente."
+            } else {
+                "⚠️ La IA detectó problemas. Un farmaceuta revisará tu fórmula."
+            }
+
+            Result.success(mensajeFinal)
         } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -139,8 +182,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return notificationDao.getNotificationsByUser(user.documento)
     }
 
-
-
     suspend fun updateRequestAsPharmacist(
         requestId: Int,
         estado: String,
@@ -158,7 +199,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             ubicacion = ubicacion
         )
 
-        // 📢 Notificación al usuario sobre el cambio de estado
+        // Notificación al usuario sobre el cambio de estado
         notificationService.showFormulaStatusNotification(
             estado = estado,
             medicamento = request.medicamento,
@@ -176,8 +217,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
         val message = when (estado) {
             "aceptada" -> "Su fórmula fue aceptada.${if (turno.isNotBlank()) " Turno: $turno" else ""}"
-            "rechazada" -> "Su fórmula fue rechazada. Comuníquese con el farmaceuta."
-            "aplazada" -> "Su fórmula fue aplazada. Revise observaciones."
+            "rechazada" -> "Su fórmula fue rechazada. ${if (comentario.isNotBlank()) "Motivo: $comentario" else "Comuníquese con el farmaceuta."}"
+            "aplazada" -> "Su fórmula fue aplazada. ${if (comentario.isNotBlank()) "Motivo: $comentario" else "Revise observaciones."}"
             "lista" -> "Su medicamento está listo para reclamar. Ubicación: $ubicacion"
             else -> "Su solicitud fue actualizada."
         }
