@@ -21,9 +21,9 @@ import java.util.concurrent.TimeUnit
 class GeminiService(private val context: Context) {
 
     companion object {
-        private const val API_KEY = "AIzaSyCwmlJIobZRsQ-Q7wkB-ut-XS_PCe40zN0"
+        private const val API_KEY = "AIzaSyCGI45rST0XuJHDFTUQci2yZ-eG-Ib1XMM"
         private const val MODEL_NAME = "gemini-2.5-flash"
-        private val API_URL = "https://generativelanguage.googleapis.com/v1/models/$MODEL_NAME:generateContent?key=$API_KEY"
+        private val API_URL = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL_NAME:generateContent?key=$API_KEY"
     }
 
     private val client = OkHttpClient.Builder()
@@ -176,9 +176,9 @@ class GeminiService(private val context: Context) {
             inputStream.close()
             if (bitmap == null) return null
 
-            val resizedBitmap = resizeBitmap(bitmap, 1024)
+            val resizedBitmap = resizeBitmap(bitmap, 720)
             val stream = ByteArrayOutputStream()
-            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 65, stream)
             stream.toByteArray()
         } catch (e: Exception) {
             Log.e("GeminiService", "Error cargando imagen: ${e.message}")
@@ -192,27 +192,28 @@ class GeminiService(private val context: Context) {
         phoneExpected: String
     ): String {
         return """
-            Eres un farmaceutico. Analiza esta formula medica.
-            
-            Datos del paciente que debes verificar:
-            - Nombre: $patientNameExpected
-            - Documento: $documentIdExpected
-            - Telefono: $phoneExpected
-            
-            Responde SOLO con este JSON:
-            {
-                "isValid": true,
-                "patientName": "$patientNameExpected",
-                "documentId": "$documentIdExpected",
-                "medicineName": "Nombre del medicamento encontrado",
-                "message": "Validacion exitosa",
-                "observations": []
-            }
-            
-            Si algo no coincide, pon isValid=false y explica en observations que no coincide.
-        """.trimIndent()
+        Eres un farmaceutico. Analiza esta formula medica.
+        
+        Datos del paciente que debes verificar:
+        - Nombre: $patientNameExpected
+        - Documento: $documentIdExpected
+        - Telefono: $phoneExpected
+        
+        IMPORTANTE: Tu respuesta debe ser UNICAMENTE el objeto JSON plano, sin usar bloques de codigo markdown como ```json o ```. No agregues ninguna explicacion fuera del JSON.
+        
+        Estructura obligatoria del JSON:
+        {
+            "isValid": true,
+            "patientName": "$patientNameExpected",
+            "documentId": "$documentIdExpected",
+            "medicineName": "Nombre del medicamento encontrado",
+            "message": "Validacion exitosa",
+            "observations": []
+        }
+        
+        Si algo no coincide, pon isValid=false y explica detalladamente en el array de "observations" que elementos no coinciden.
+    """.trimIndent()
     }
-
     private fun parseResponse(responseText: String): ValidationResult {
         return try {
             val json = JSONObject(responseText)

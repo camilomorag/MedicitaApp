@@ -9,6 +9,7 @@ data class FormulaRequestEntity(
     val id: Int = 0,
     val userDocumento: String,
     val userNombre: String,
+    val userTelefono: String = "",  // ✅ AGREGAR ESTA LÍNEA
     val formulaUri: String,
     val formulaType: String,
     val medicamento: String,

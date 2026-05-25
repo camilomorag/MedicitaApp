@@ -161,7 +161,8 @@ fun LoginScreen(
     authViewModel: AuthViewModel,
     onLoginSuccess: () -> Unit,
     onGoRegister: () -> Unit,
-    onGoPharmacist: () -> Unit
+    onGoPharmacist: () -> Unit,
+    onForgotPassword: () -> Unit  // ✅ Agregar este parámetro
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -304,17 +305,11 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 TextButton(
-                    onClick = {
-                        Toast.makeText(
-                            context,
-                            "Ir a recuperar contrasena",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
+                    onClick = { onForgotPassword() },  // ✅ Cambiar esto
                     modifier = Modifier.align(Alignment.End)
                 ) {
                     Text(
-                        text = "Olvido su contrasena?",
+                        text = "¿Olvidó su contraseña?",
                         color = Color(0xFF4A8CFF),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -392,11 +387,8 @@ fun LoginScreen(
 
                 Button(
                     onClick = {
-                        Toast.makeText(
-                            context,
-                            "Login con numero de celular",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        // Redirigir a la pantalla de registro (crear cuenta)
+                        onGoRegister()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -421,7 +413,7 @@ fun LoginScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Ingresar con numero de celular",
+                            text = "Registrarse con número de celular",
                             color = Color(0xFF2C3140),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold

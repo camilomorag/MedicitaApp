@@ -79,7 +79,7 @@ fun ReviewFormulaScreen(
                         Text(formula.userNombre, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D2433))
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Documento: ${formula.userDocumento}", fontSize = 14.sp, color = Color(0xFF4E596B))
-                        //Text("Telefono: ${formula.userTelefono}", fontSize = 14.sp, color = Color(0xFF4E596B))
+                        Text("Telefono: ${formula.userTelefono}", fontSize = 14.sp, color = Color(0xFF4E596B))
                         Text("Medicamento: ${formula.medicamento}", fontSize = 14.sp, color = Color(0xFF4E596B))
                     }
                 }

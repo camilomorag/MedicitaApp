@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.medicitaapp.DeliverySuccessScreen
+import com.example.medicitaapp.ForgotPasswordScreen
 import com.example.medicitaapp.HomeScreen
 import com.example.medicitaapp.LoginScreen
 import com.example.medicitaapp.QueueStatusScreen
@@ -42,6 +43,9 @@ fun AppNavHost(
                 },
                 onGoPharmacist = {
                     navController.navigate(AppRoutes.PHARMACIST_LOGIN)
+                },
+                onForgotPassword = {  // ✅ Agregar este callback
+                    navController.navigate(AppRoutes.FORGOT_PASSWORD)
                 }
             )
         }
@@ -198,5 +202,13 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() }
             )
         }
+        composable(AppRoutes.FORGOT_PASSWORD) {
+            ForgotPasswordScreen(
+                authViewModel = authViewModel,
+                onBack = { navController.popBackStack() },
+                onSuccess = { navController.popBackStack() }
+            )
+        }
+
     }
 }

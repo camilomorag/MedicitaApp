@@ -16,6 +16,6 @@ object AppRoutes {
     const val REVIEW_FORMULA = "review_formula"
 
     const val MEDICINE_DETAIL = "medicine_detail"
-
+    const val FORGOT_PASSWORD = "forgot_password"
 
 }

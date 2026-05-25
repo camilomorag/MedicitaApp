@@ -47,6 +47,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ============================================
+    // REGISTRO Y LOGIN
+    // ============================================
+
     suspend fun register(
         nombre: String,
         documento: String,
@@ -90,7 +94,19 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ============================================
-    // FORMULAS - VERSIÓN SIMPLIFICADA (SIN IA)
+    // RECUPERAR CONTRASEÑA
+    // ============================================
+
+    suspend fun getUserByDocumento(documento: String): UserEntity? {
+        return userDao.getUserByDocumento(documento)
+    }
+
+    suspend fun updatePassword(documento: String, nuevaPassword: String) {
+        userDao.updatePassword(documento, nuevaPassword)
+    }
+
+    // ============================================
+    // FORMULAS CON VALIDACIÓN IA
     // ============================================
 
     suspend fun submitFormulaRequest(
@@ -105,6 +121,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 FormulaRequestEntity(
                     userDocumento = user.documento,
                     userNombre = user.nombre,
+                    userTelefono = user.telefono,
                     formulaUri = formulaUri,
                     formulaType = formulaType,
                     medicamento = "Pendiente de validación",

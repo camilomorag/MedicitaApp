@@ -16,4 +16,7 @@ interface UserDao {
 
     @Query("SELECT * FROM users WHERE documento = :documento AND password = :password LIMIT 1")
     suspend fun login(documento: String, password: String): UserEntity?
+
+    @Query("UPDATE users SET password = :newPassword WHERE documento = :documento")
+    suspend fun updatePassword(documento: String, newPassword: String)
 }
