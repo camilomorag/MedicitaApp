@@ -15,5 +15,6 @@ data class MedicineApiResponse(
     @SerializedName("atc") val atc: String?,
     @SerializedName("unidad") val unidad: String?,
     @SerializedName("formafarmaceutica") val formafarmaceutica: String?,
-    @SerializedName("descripcionatc") val descripcionatc: String?  // ← Agrega este campo
+    @SerializedName("descripcionatc") val descripcionatc: String?,
+    @SerializedName("concentracion") val concentracion: String?  // Nuevo campo
 )

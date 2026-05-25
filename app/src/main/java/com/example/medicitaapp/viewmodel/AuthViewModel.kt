@@ -188,13 +188,15 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     } else {
                         response.forEach { apiMedicine ->
                             if (!apiMedicine.producto.isNullOrBlank()) {
+                                // En la conversión de API a MedicineEntity, agrega:
+                                // Dentro de loadMedicinesFromApi(), cuando agregas el medicamento:
                                 medicines.add(
                                     MedicineEntity(
                                         expediente = apiMedicine.expediente ?: "N/A",
                                         producto = apiMedicine.producto!!.take(150),
                                         titular = apiMedicine.titular ?: "No especificado",
                                         registroSanitario = apiMedicine.registrosanitario ?: "N/A",
-                                        fechaExpedicion = apiMedicine.fechaexpedicion ?: "",
+                                        fechaExpedicion = apiMedicine.fechaexpedicion?.take(4) ?: "", // Solo el año
                                         fechaVencimiento = apiMedicine.fechavencimiento ?: "",
                                         estadoRegistro = apiMedicine.estadoregistro ?: "Vigente",
                                         descripcion = buildString {
@@ -210,7 +212,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                         }.take(200),
                                         estadoComercial = "Activo",
                                         unidad = apiMedicine.unidad ?: "U",
-                                        disponible = apiMedicine.estadoregistro?.equals("Vigente", ignoreCase = true) ?: true
+                                        disponible = apiMedicine.estadoregistro?.equals("Vigente", ignoreCase = true) ?: true,
+                                        // ✅ Nuevos campos
+                                        viaAdministracion = apiMedicine.viaadministracion ?: "",
+                                        formaFarmaceutica = apiMedicine.formafarmaceutica ?: "",
+                                        principioActivo = apiMedicine.principioactivo?.take(100) ?: "",
+                                        atc = apiMedicine.atc ?: "",
+                                        concentracion = apiMedicine.concentracion ?: ""
                                     )
                                 )
                             }

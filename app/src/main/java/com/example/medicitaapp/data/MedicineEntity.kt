@@ -17,5 +17,11 @@ data class MedicineEntity(
     val descripcion: String,
     val estadoComercial: String,
     val unidad: String,
-    val disponible: Boolean = true
+    val disponible: Boolean = true,
+    // Nuevos campos para filtros avanzados
+    val viaAdministracion: String = "",
+    val formaFarmaceutica: String = "",
+    val principioActivo: String = "",
+    val atc: String = "",
+    val concentracion: String = ""
 )
