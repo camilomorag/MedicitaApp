@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import com.example.medicitaapp.data.*
+import com.example.medicitaapp.services.NotificationService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -18,6 +19,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val sessionManager = SessionManager(application)
     private val medicineDao = db.medicineDao()
 
+    lateinit var notificationService: NotificationService
+
     var currentUser by mutableStateOf<UserEntity?>(null)
         private set
 
@@ -26,6 +29,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         restoreSession()
+    }
+
+    fun initNotificationService(context: Context) {
+        notificationService = NotificationService(context)
     }
 
     private fun restoreSession() {
@@ -84,6 +91,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     ): Result<String> {
         return try {
             val user = currentUser ?: return Result.failure(Exception("No hay usuario logueado"))
+
             val request = FormulaRequestEntity(
                 userDocumento = user.documento,
                 userNombre = user.nombre,
@@ -92,14 +100,21 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 medicamento = "Pendiente de validación",
                 estado = "pendiente"
             )
+
             formulaRequestDao.insertRequest(request)
+
+            // 📢 Notificación para el usuario
+            notificationService.showFormulaSubmittedNotification("Pendiente de validación")
+
+            // Guardar notificación en DB
             notificationDao.insertNotification(
                 NotificationEntity(
                     userDocumento = user.documento,
-                    title = "Solicitud enviada",
-                    message = "Su fórmula fue enviada correctamente y está pendiente de revisión."
+                    title = "📄 Fórmula enviada",
+                    message = "Tu fórmula ha sido enviada correctamente y está pendiente de revisión."
                 )
             )
+
             Result.success("Solicitud enviada")
         } catch (e: Exception) {
             Result.failure(e)
@@ -124,6 +139,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return notificationDao.getNotificationsByUser(user.documento)
     }
 
+
+
     suspend fun updateRequestAsPharmacist(
         requestId: Int,
         estado: String,
@@ -132,6 +149,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         ubicacion: String = ""
     ) {
         val request = formulaRequestDao.getRequestById(requestId) ?: return
+
         formulaRequestDao.updateRequestStatus(
             requestId = requestId,
             estado = estado,
@@ -139,22 +157,36 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             turno = turno,
             ubicacion = ubicacion
         )
+
+        // 📢 Notificación al usuario sobre el cambio de estado
+        notificationService.showFormulaStatusNotification(
+            estado = estado,
+            medicamento = request.medicamento,
+            turno = turno,
+            ubicacion = ubicacion
+        )
+
+        val title = when (estado) {
+            "aceptada" -> "✅ Fórmula aceptada"
+            "rechazada" -> "❌ Fórmula rechazada"
+            "aplazada" -> "⏰ Fórmula aplazada"
+            "lista" -> "🎉 Medicamento listo"
+            else -> "Actualización de solicitud"
+        }
+
         val message = when (estado) {
-            "aceptada" -> "Su fórmula fue aceptada."
-            "rechazada" -> "Su fórmula fue rechazada."
+            "aceptada" -> "Su fórmula fue aceptada.${if (turno.isNotBlank()) " Turno: $turno" else ""}"
+            "rechazada" -> "Su fórmula fue rechazada. Comuníquese con el farmaceuta."
             "aplazada" -> "Su fórmula fue aplazada. Revise observaciones."
-            "lista" -> "Su medicamento está listo para reclamar."
+            "lista" -> "Su medicamento está listo para reclamar. Ubicación: $ubicacion"
             else -> "Su solicitud fue actualizada."
         }
+
         notificationDao.insertNotification(
             NotificationEntity(
                 userDocumento = request.userDocumento,
-                title = "Actualización de solicitud",
-                message = if (turno.isNotBlank()) {
-                    "$message Turno: $turno. Ubicación: $ubicacion"
-                } else {
-                    message
-                }
+                title = title,
+                message = message
             )
         )
     }
@@ -163,9 +195,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     // FUNCIONES PARA CARGAR MEDICAMENTOS DESDE API
     // ============================================
 
-    /**
-     * Función para cargar medicamentos desde la API del gobierno
-     */
     suspend fun loadMedicinesFromApi(): List<MedicineEntity> {
         return withContext(Dispatchers.IO) {
             try {
@@ -188,15 +217,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     } else {
                         response.forEach { apiMedicine ->
                             if (!apiMedicine.producto.isNullOrBlank()) {
-                                // En la conversión de API a MedicineEntity, agrega:
-                                // Dentro de loadMedicinesFromApi(), cuando agregas el medicamento:
                                 medicines.add(
                                     MedicineEntity(
                                         expediente = apiMedicine.expediente ?: "N/A",
                                         producto = apiMedicine.producto!!.take(150),
                                         titular = apiMedicine.titular ?: "No especificado",
                                         registroSanitario = apiMedicine.registrosanitario ?: "N/A",
-                                        fechaExpedicion = apiMedicine.fechaexpedicion?.take(4) ?: "", // Solo el año
+                                        fechaExpedicion = apiMedicine.fechaexpedicion?.take(4) ?: "",
                                         fechaVencimiento = apiMedicine.fechavencimiento ?: "",
                                         estadoRegistro = apiMedicine.estadoregistro ?: "Vigente",
                                         descripcion = buildString {
@@ -213,7 +240,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                         estadoComercial = "Activo",
                                         unidad = apiMedicine.unidad ?: "U",
                                         disponible = apiMedicine.estadoregistro?.equals("Vigente", ignoreCase = true) ?: true,
-                                        // ✅ Nuevos campos
                                         viaAdministracion = apiMedicine.viaadministracion ?: "",
                                         formaFarmaceutica = apiMedicine.formafarmaceutica ?: "",
                                         principioActivo = apiMedicine.principioactivo?.take(100) ?: "",
@@ -238,9 +264,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Función mejorada para precargar medicamentos (API primero, CSV como respaldo)
-     */
     suspend fun preloadMedicinesIfNeeded(context: Context) {
         try {
             val current = medicineDao.getAllMedicines()
@@ -249,14 +272,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             if (current.isEmpty()) {
                 Log.d("AuthViewModel", "🔄 No hay medicamentos en DB, cargando desde API...")
 
-                // Intentar cargar desde API primero
                 val apiMedicines = loadMedicinesFromApi()
 
                 if (apiMedicines.isNotEmpty()) {
                     medicineDao.insertAll(apiMedicines)
                     Log.d("AuthViewModel", "✅ ${apiMedicines.size} medicamentos guardados desde API")
                 } else {
-                    // Fallback a CSV si API falla
                     Log.w("AuthViewModel", "⚠️ API falló, intentando con CSV...")
                     val csvMedicines = MedicineCsvLoader.loadMedicinesFromCsv(context)
                     if (csvMedicines.isNotEmpty()) {

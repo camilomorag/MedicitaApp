@@ -1,11 +1,16 @@
 package com.example.medicitaapp
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,15 +66,38 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.medicitaapp.data.AppDatabase
-import com.example.medicitaapp.data.MedicineCsvLoader
 import com.example.medicitaapp.navigation.AppNavHost
 import com.example.medicitaapp.ui.theme.MedicitaAppTheme
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    // Registrar el launcher para el permiso de notificaciones
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d("MainActivity", "Permiso de notificaciones concedido")
+        } else {
+            Log.d("MainActivity", "Permiso de notificaciones denegado")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Solicitar permiso de notificaciones (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         setContent {
             MedicitaAppTheme {
                 AppRoot()
@@ -87,21 +115,24 @@ fun AppRoot() {
 
     LaunchedEffect(Unit) {
         try {
-            Log.d("AppRoot", "🚀 Iniciando AppRoot...")
+            Log.d("AppRoot", "Iniciando AppRoot...")
 
-            // Usar la función mejorada de AuthViewModel
+            // Inicializar servicio de notificaciones
+            authViewModel.initNotificationService(context)
+
+            // Usar la funcion mejorada de AuthViewModel
             authViewModel.preloadMedicinesIfNeeded(context)
 
-            // Verificar después de cargar
+            // Verificar despues de cargar
             val db = AppDatabase.getDatabase(context)
             val medicinesAfter = db.medicineDao().getAllMedicines()
-            Log.d("AppRoot", "✅ Medicamentos después de cargar: ${medicinesAfter.size}")
+            Log.d("AppRoot", "Medicamentos despues de cargar: ${medicinesAfter.size}")
 
             if (medicinesAfter.isEmpty()) {
-                Log.e("AppRoot", "⚠️ No hay medicamentos en la base de datos")
+                Log.e("AppRoot", "No hay medicamentos en la base de datos")
             }
         } catch (e: Exception) {
-            Log.e("AppRoot", "❌ Error fatal: ${e.message}", e)
+            Log.e("AppRoot", "Error fatal: ${e.message}", e)
         } finally {
             isLoading = false
         }
@@ -129,7 +160,6 @@ fun AppRoot() {
     }
 }
 
-// ... (resto de tu código LoginScreen, TopIcon, customTextFieldColors se mantienen igual)
 @Composable
 fun LoginScreen(
     authViewModel: AuthViewModel,
@@ -179,7 +209,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Inicie sesión para reclamar sus medicamentos y ver sus turnos digitales.",
+                    text = "Inicie sesion para reclamar sus medicamentos y ver sus turnos digitales.",
                     fontSize = 15.sp,
                     color = Color(0xFF7B8494),
                     textAlign = TextAlign.Center,
@@ -190,7 +220,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Número de documento o usuario",
+                    text = "Numero de documento o usuario",
                     modifier = Modifier.fillMaxWidth(),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -227,7 +257,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Contraseña",
+                    text = "Contrasena",
                     modifier = Modifier.fillMaxWidth(),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -244,7 +274,7 @@ fun LoginScreen(
                         .height(60.dp),
                     placeholder = {
                         Text(
-                            text = "Ingrese su contraseña",
+                            text = "Ingrese su contrasena",
                             color = Color(0xFFA1A8B3)
                         )
                     },
@@ -281,14 +311,14 @@ fun LoginScreen(
                     onClick = {
                         Toast.makeText(
                             context,
-                            "Ir a recuperar contraseña",
+                            "Ir a recuperar contrasena",
                             Toast.LENGTH_SHORT
                         ).show()
                     },
                     modifier = Modifier.align(Alignment.End)
                 ) {
                     Text(
-                        text = "¿Olvidó su contraseña?",
+                        text = "Olvido su contrasena?",
                         color = Color(0xFF4A8CFF),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -311,7 +341,7 @@ fun LoginScreen(
                             password.isBlank() -> {
                                 Toast.makeText(
                                     context,
-                                    "Ingrese su contraseña",
+                                    "Ingrese su contrasena",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -347,7 +377,7 @@ fun LoginScreen(
                     )
                 ) {
                     Text(
-                        text = "Iniciar sesión",
+                        text = "Iniciar sesion",
                         color = Color.White,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
@@ -357,7 +387,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "o también",
+                    text = "o tambien",
                     color = Color(0xFF9AA2AE),
                     fontSize = 12.sp
                 )
@@ -368,7 +398,7 @@ fun LoginScreen(
                     onClick = {
                         Toast.makeText(
                             context,
-                            "Login con número de celular",
+                            "Login con numero de celular",
                             Toast.LENGTH_SHORT
                         ).show()
                     },
@@ -395,7 +425,7 @@ fun LoginScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Ingresar con número de celular",
+                            text = "Ingresar con numero de celular",
                             color = Color(0xFF2C3140),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -440,7 +470,7 @@ fun LoginScreen(
                     )
                 ) {
                     Text(
-                        text = "Ingresar como farmaceuta",
+                        text = "Ingresar como farmaceutico",
                         color = Color(0xFF2F80ED),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
@@ -458,7 +488,7 @@ fun LoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "¿Necesita ayuda?",
+                        text = "Necesita ayuda?",
                         color = Color(0xFF6D7685),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold

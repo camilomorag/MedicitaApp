@@ -54,7 +54,7 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Fila con saludo y foto de perfil
+            // Fila con saludo, campanita y foto de perfil
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -75,20 +75,28 @@ fun HomeScreen(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFEAF2FF))
-                        .clickable { onVerPerfil() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Perfil",
-                        tint = Color(0xFF2F80ED),
-                        modifier = Modifier.size(26.dp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Campanita con badge rojo
+                    com.example.medicitaapp.ui.components.NotificationBadge(
+                        onClick = onVerNotificaciones
                     )
+
+                    // Foto de perfil
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFEAF2FF))
+                            .clickable { onVerPerfil() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Perfil",
+                            tint = Color(0xFF2F80ED),
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
                 }
             }
 
