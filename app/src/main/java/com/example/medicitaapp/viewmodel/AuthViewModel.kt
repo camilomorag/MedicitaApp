@@ -185,7 +185,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 documentIdExpected = user.documento,
                 phoneExpected = user.telefono,
                 imageUri = if (formulaType == "image") Uri.parse(formulaUri) else null,
-                pdfText = null
+                pdfUri = if (formulaType == "pdf") Uri.parse(formulaUri) else null  // ✅ Cambiado
             )
 
             val mensajeValidacion = if (validationResult.isValid) {
