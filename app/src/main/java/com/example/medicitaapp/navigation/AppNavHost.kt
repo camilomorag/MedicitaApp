@@ -1,6 +1,17 @@
 package com.example.medicitaapp.navigation
 
+import android.util.Log
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -44,7 +55,7 @@ fun AppNavHost(
                 onGoPharmacist = {
                     navController.navigate(AppRoutes.PHARMACIST_LOGIN)
                 },
-                onForgotPassword = {  // ✅ Agregar este callback
+                onForgotPassword = {
                     navController.navigate(AppRoutes.FORGOT_PASSWORD)
                 }
             )
@@ -70,6 +81,7 @@ fun AppNavHost(
                     onVerTurno = { navController.navigate(AppRoutes.QUEUE) },
                     onVerNotificaciones = { navController.navigate(AppRoutes.NOTIFICATIONS) },
                     onVerPerfil = { navController.navigate(AppRoutes.PROFILE) }
+                    // authViewModel = authViewModel  // ← Elimina esta línea
                 )
             }
         }
@@ -89,9 +101,45 @@ fun AppNavHost(
             if (authViewModel.currentUser == null) {
                 navController.navigate(AppRoutes.LOGIN)
             } else {
-                QueueStatusScreen(
-                    onBack = { navController.popBackStack() }
-                )
+                var turno by remember { mutableStateOf("Sin turno") }
+                var ubicacion by remember { mutableStateOf("Sin ubicación") }
+                var tiempoEspera by remember { mutableStateOf(0) }
+                var posicionCola by remember { mutableStateOf(0) }
+                var isLoading by remember { mutableStateOf(true) }
+
+                LaunchedEffect(Unit) {
+                    try {
+                        val userRequests = authViewModel.getUserRequests()
+                        val ultimaSolicitud = userRequests.firstOrNull { it.estado == "aceptada" || it.estado == "lista" }
+                        if (ultimaSolicitud != null) {
+                            turno = ultimaSolicitud.turno.ifEmpty { "Sin turno" }
+                            ubicacion = ultimaSolicitud.ubicacion.ifEmpty { "Sin ubicación" }
+                            tiempoEspera = ultimaSolicitud.tiempoEspera
+                            posicionCola = ultimaSolicitud.posicionCola
+                        }
+                    } catch (e: Exception) {
+                        Log.e("AppNavHost", "Error cargando turno: ${e.message}")
+                    } finally {
+                        isLoading = false
+                    }
+                }
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    QueueStatusScreen(
+                        onBack = { navController.popBackStack() },
+                        turno = turno,
+                        ubicacion = ubicacion,
+                        tiempoEspera = tiempoEspera,
+                        posicionCola = posicionCola
+                    )
+                }
             }
         }
 
@@ -156,7 +204,6 @@ fun AppNavHost(
                     },
                     onBack = { navController.popBackStack() },
                     onLogout = {
-
                         authViewModel.logout()
                         navController.navigate(AppRoutes.LOGIN) {
                             popUpTo(0) { inclusive = true }
@@ -202,6 +249,7 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() }
             )
         }
+
         composable(AppRoutes.FORGOT_PASSWORD) {
             ForgotPasswordScreen(
                 authViewModel = authViewModel,
@@ -209,6 +257,5 @@ fun AppNavHost(
                 onSuccess = { navController.popBackStack() }
             )
         }
-
     }
 }

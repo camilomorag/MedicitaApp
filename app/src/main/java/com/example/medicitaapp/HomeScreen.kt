@@ -30,7 +30,8 @@ fun HomeScreen(
     onSubirFormula: () -> Unit,
     onVerTurno: () -> Unit,
     onVerNotificaciones: () -> Unit,
-    onVerPerfil: () -> Unit
+    onVerPerfil: () -> Unit,
+
 ) {
     Scaffold(
         containerColor = Color(0xFFF4F6F8),
@@ -243,8 +244,7 @@ fun HomeBottomBar(
     onAvisos: () -> Unit,
     onPerfil: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
+    Row(        modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(horizontal = 10.dp, vertical = 8.dp),

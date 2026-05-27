@@ -42,9 +42,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private fun restoreSession() {
         isPharmacistLoggedIn = sessionManager.isPharmacistLoggedIn()
         val documento = sessionManager.getUserDocumento()
-        if (documento != null) {
-            // Se cargará luego con login
-        }
+        // Se cargará luego con login
     }
 
     // ============================================
@@ -116,7 +114,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return try {
             val user = currentUser ?: return Result.failure(Exception("No hay usuario logueado"))
 
-            // 1. Insertar la solicitud
             val requestId = formulaRequestDao.insertRequest(
                 FormulaRequestEntity(
                     userDocumento = user.documento,
@@ -124,12 +121,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     userTelefono = user.telefono,
                     formulaUri = formulaUri,
                     formulaType = formulaType,
-                    medicamento = "Pendiente de validación",
+                    medicamento = "Pendiente de validacion",
                     estado = "pendiente"
                 )
             ).toInt()
 
-            // 2. VALIDACIÓN CON IA
             val validationResult = geminiService.validateFormula(
                 patientNameExpected = user.nombre,
                 documentIdExpected = user.documento,
@@ -138,11 +134,10 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 pdfText = null
             )
 
-            // 3. Guardar resultado de la IA
             val mensajeValidacion = if (validationResult.isValid) {
-                "✅ Validación exitosa: ${validationResult.message}"
+                "✅ Validacion exitosa: ${validationResult.message}"
             } else {
-                "❌ Validación fallida: ${validationResult.message}"
+                "❌ Validacion fallida: ${validationResult.message}"
             }
             val observacionesValidacion = validationResult.observations.joinToString("\n")
 
@@ -153,25 +148,23 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 observacionesValidacion = observacionesValidacion
             )
 
-            // 4. Si la validación falló, notificar al farmaceuta
             if (!validationResult.isValid) {
                 notificationService.showNewFormulaForPharmacistNotification(user.nombre)
             }
 
-            // 5. Notificación al usuario
-            notificationService.showFormulaSubmittedNotification("Pendiente de validación")
+            notificationService.showFormulaSubmittedNotification("Pendiente de validacion")
             notificationDao.insertNotification(
                 NotificationEntity(
                     userDocumento = user.documento,
-                    title = if (validationResult.isValid) "📄 Fórmula enviada" else "⚠️ Fórmula con problemas",
+                    title = if (validationResult.isValid) "📄 Formula enviada" else "⚠️ Formula con problemas",
                     message = mensajeValidacion
                 )
             )
 
             val mensajeFinal = if (validationResult.isValid) {
-                "✅ Fórmula válida. Enviada correctamente."
+                "✅ Formula valida. Enviada correctamente."
             } else {
-                "⚠️ La IA detectó problemas. Un farmaceuta revisará tu fórmula."
+                "⚠️ La IA detecto problemas. Un farmaceuta revisara tu formula."
             }
 
             Result.success(mensajeFinal)
@@ -199,6 +192,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return notificationDao.getNotificationsByUser(user.documento)
     }
 
+    // Método original (para mantener compatibilidad)
     suspend fun updateRequestAsPharmacist(
         requestId: Int,
         estado: String,
@@ -213,10 +207,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             estado = estado,
             comentario = comentario,
             turno = turno,
-            ubicacion = ubicacion
+            ubicacion = ubicacion,
+            tiempoEspera = 0,
+            posicionCola = 0
         )
 
-        // Notificación al usuario sobre el cambio de estado
         notificationService.showFormulaStatusNotification(
             estado = estado,
             medicamento = request.medicamento,
@@ -225,18 +220,18 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         val title = when (estado) {
-            "aceptada" -> "✅ Fórmula aceptada"
-            "rechazada" -> "❌ Fórmula rechazada"
-            "aplazada" -> "⏰ Fórmula aplazada"
+            "aceptada" -> "✅ Formula aceptada"
+            "rechazada" -> "❌ Formula rechazada"
+            "aplazada" -> "⏰ Formula aplazada"
             "lista" -> "🎉 Medicamento listo"
-            else -> "Actualización de solicitud"
+            else -> "Actualizacion de solicitud"
         }
 
         val message = when (estado) {
-            "aceptada" -> "Su fórmula fue aceptada.${if (turno.isNotBlank()) " Turno: $turno" else ""}"
-            "rechazada" -> "Su fórmula fue rechazada. ${if (comentario.isNotBlank()) "Motivo: $comentario" else "Comuníquese con el farmaceuta."}"
-            "aplazada" -> "Su fórmula fue aplazada. ${if (comentario.isNotBlank()) "Motivo: $comentario" else "Revise observaciones."}"
-            "lista" -> "Su medicamento está listo para reclamar. Ubicación: $ubicacion"
+            "aceptada" -> "Su formula fue aceptada.${if (turno.isNotBlank()) " Turno: $turno" else ""}"
+            "rechazada" -> "Su formula fue rechazada. ${if (comentario.isNotBlank()) "Motivo: $comentario" else "Comuniquese con el farmaceuta."}"
+            "aplazada" -> "Su formula fue aplazada. ${if (comentario.isNotBlank()) "Motivo: $comentario" else "Revise observaciones."}"
+            "lista" -> "Su medicamento esta listo para reclamar. Ubicacion: $ubicacion"
             else -> "Su solicitud fue actualizada."
         }
 
@@ -249,6 +244,44 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    // Método para asignar turno con tiempo y posición
+    // Método para asignar turno con tiempo y posición
+    suspend fun updateRequestWithTurno(
+        requestId: Int,
+        estado: String,
+        turno: String,
+        ubicacion: String,
+        tiempoEspera: Int,
+        posicionCola: Int
+    ) {
+        val request = formulaRequestDao.getRequestById(requestId) ?: return
+
+        formulaRequestDao.updateRequestStatus(
+            requestId = requestId,
+            estado = estado,
+            comentario = "",
+            turno = turno,
+            ubicacion = ubicacion,
+            tiempoEspera = tiempoEspera,
+            posicionCola = posicionCola
+        )
+
+        // Notificación al usuario
+        notificationService.showFormulaStatusNotification(
+            estado = estado,
+            medicamento = request.medicamento,
+            turno = turno,
+            ubicacion = ubicacion
+        )
+
+        notificationDao.insertNotification(
+            NotificationEntity(
+                userDocumento = request.userDocumento,
+                title = "🎫 Turno asignado",
+                message = "Su turno es $turno en $ubicacion. Tiempo estimado: $tiempoEspera minutos. Posición: $posicionCola°"
+            )
+        )
+    }
     // ============================================
     // FUNCIONES PARA CARGAR MEDICAMENTOS DESDE API
     // ============================================
@@ -289,7 +322,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                                 append("Principio activo: ${apiMedicine.principioactivo}\n")
                                             }
                                             if (!apiMedicine.viaadministracion.isNullOrBlank()) {
-                                                append("Vía: ${apiMedicine.viaadministracion}\n")
+                                                append("Via: ${apiMedicine.viaadministracion}\n")
                                             }
                                             if (!apiMedicine.formafarmaceutica.isNullOrBlank()) {
                                                 append("Forma: ${apiMedicine.formafarmaceutica}")

@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 fun PharmacistRequestsScreen(
     authViewModel: AuthViewModel,
     onOpenRequest: (Int) -> Unit,
-    onManageMedicines: () -> Unit,  // ✅ Parámetro agregado
+    onManageMedicines: () -> Unit,
     onBack: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -56,7 +56,7 @@ fun PharmacistRequestsScreen(
             .padding(16.dp)
     ) {
         Text(
-            text = "Solicitudes de fórmulas",
+            text = "Solicitudes de formulas",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1D2433)
@@ -65,7 +65,7 @@ fun PharmacistRequestsScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Revise y gestione las fórmulas subidas por los usuarios.",
+            text = "Revise y gestione las formulas subidas por los usuarios.",
             fontSize = 14.sp,
             color = Color(0xFF6E7786)
         )
@@ -119,7 +119,7 @@ fun PharmacistRequestsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ✅ Botón para administrar medicamentos
+        // Boton para administrar medicamentos
         Button(
             onClick = onManageMedicines,
             modifier = Modifier.fillMaxWidth(),
@@ -150,7 +150,7 @@ fun PharmacistRequestsScreen(
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
             ) {
-                Text("Cerrar sesión", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Cerrar sesion", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -197,14 +197,27 @@ fun PharmacistRequestCard(
                 color = Color(0xFF6E7786)
             )
 
-            // Mostrar resultado de validación IA
+            // ✅ Mostrar turno asignado si existe
+            if (request.turno.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "🎫 Turno: ${request.turno}",
+                    fontSize = 13.sp,
+                    color = Color(0xFF2D6BEB),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Mostrar resultado de validacion IA
             if (request.validacionIA) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF1B7F3B), modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("✅ Validación IA exitosa", fontSize = 12.sp, color = Color(0xFF1B7F3B))
+                    Text("✅ Validacion IA exitosa", fontSize = 12.sp, color = Color(0xFF1B7F3B))
                 }
             } else if (request.mensajeValidacion.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Warning, null, tint = Color(0xFFFF9800), modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))

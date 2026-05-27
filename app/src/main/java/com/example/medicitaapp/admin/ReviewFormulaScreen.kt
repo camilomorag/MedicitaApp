@@ -23,6 +23,48 @@ import androidx.compose.ui.unit.sp
 import com.example.medicitaapp.data.FormulaRequestEntity
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
+import kotlin.random.Random
+
+// ✅ Función mejorada para generar turno aleatorio con tiempo de espera y posición
+fun generarTurnoAleatorioMejorado(): Triple<String, String, Pair<Int, Int>> {
+    val sucursales = listOf(
+        Triple("A", "Farmatodo - Calle 100 # 15-20, Bogotá", 15),
+        Triple("B", "Cruz Verde - Carrera 15 # 88-36, Bogotá", 20),
+        Triple("C", "Farmasanitas - Calle 80 # 69-25, Bogotá", 10),
+        Triple("D", "Drogas La Rebaja - Av. Boyacá # 49A-20, Bogotá", 25),
+        Triple("E", "Colsubsidio - Calle 45 # 24-50, Bogotá", 30)
+    )
+
+    val (letra, ubicacion, tiempoBase) = sucursales.random()
+    val numero = (1..50).random()
+    val turno = "$letra-$numero"
+
+    val posicion = (1..15).random()
+    val tiempoEspera = tiempoBase + (posicion * 2)
+
+    return Triple(turno, ubicacion, Pair(tiempoEspera, posicion))
+}
+
+// Función simple para generar turno aleatorio
+fun generarTurnoAleatorio(): String {
+    val letras = listOf("A", "B", "C", "D", "E")
+    val letra = letras.random()
+    val numero = (1..99).random()
+    return "$letra-$numero"
+}
+
+// Función para obtener ubicación real según el turno
+fun obtenerUbicacionReal(turno: String): Pair<String, String> {
+    val ubicaciones = mapOf(
+        "A" to Pair("Farmatodo - Calle 100 # 15-20, Bogotá", "https://maps.google.com/?q=4.6566,-74.0624"),
+        "B" to Pair("Cruz Verde - Carrera 15 # 88-36, Bogotá", "https://maps.google.com/?q=4.6728,-74.0554"),
+        "C" to Pair("Farmasanitas - Calle 80 # 69-25, Bogotá", "https://maps.google.com/?q=4.6484,-74.0858"),
+        "D" to Pair("Drogas La Rebaja - Av. Boyacá # 49A-20, Bogotá", "https://maps.google.com/?q=4.6356,-74.0866"),
+        "E" to Pair("Colsubsidio - Calle 45 # 24-50, Bogotá", "https://maps.google.com/?q=4.6251,-74.0644")
+    )
+    val letra = turno.take(1)
+    return ubicaciones[letra] ?: ubicaciones["A"]!!
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -174,18 +216,40 @@ fun ReviewFormulaScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Asignar turno
+                // ✅ Asignar turno AUTOMÁTICO MEJORADO (con tiempo de espera y posición)
+                // ✅ Usando el nuevo método updateRequestWithTurno
+                // ✅ Asignar turno AUTOMÁTICO
                 Button(
                     onClick = {
-                        accionSeleccionada = "turno"
-                        showComentarioDialog = true
+                        val resultado = generarTurnoAleatorioMejorado()
+                        val turnoGenerado = resultado.first
+                        val ubicacionGenerada = resultado.second
+                        val tiempoEspera = resultado.third.first
+                        val posicionCola = resultado.third.second
+
+                        scope.launch {
+                            authViewModel.updateRequestWithTurno(
+                                requestId = requestId,
+                                estado = "aceptada",
+                                turno = turnoGenerado,
+                                ubicacion = ubicacionGenerada,
+                                tiempoEspera = tiempoEspera,
+                                posicionCola = posicionCola
+                            )
+                            Toast.makeText(
+                                context,
+                                "✅ Turno $turnoGenerado asignado\n📍 $ubicacionGenerada\n⏱️ Espera: $tiempoEspera min\n🎫 Posición: $posicionCola°",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            onBack()
+                        }
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
                 ) {
                     Icon(Icons.Default.QrCode, null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Asignar turno", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Asignar turno automático", color = Color.White, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

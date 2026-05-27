@@ -9,16 +9,17 @@ data class FormulaRequestEntity(
     val id: Int = 0,
     val userDocumento: String,
     val userNombre: String,
-    val userTelefono: String = "",  // ✅ AGREGAR ESTA LÍNEA
+    val userTelefono: String = "",  // ✅ Campo agregado
     val formulaUri: String,
     val formulaType: String,
     val medicamento: String,
     val estado: String = "pendiente",
     val turno: String = "",
     val ubicacion: String = "",
+    val tiempoEspera: Int = 0,      // ✅ Campo agregado
+    val posicionCola: Int = 0,      // ✅ Campo agregado
     val comentarioFarmaceuta: String = "",
     val fechaCreacion: Long = System.currentTimeMillis(),
-    // ✅ CAMPOS PARA IA
     val validacionIA: Boolean = false,
     val mensajeValidacion: String = "",
     val observacionesValidacion: String = ""

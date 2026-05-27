@@ -40,19 +40,23 @@ interface FormulaRequestDao {
     )
 
     @Query("""
-        UPDATE formula_requests 
-        SET estado = :estado,
-            comentarioFarmaceuta = :comentario,
-            turno = :turno,
-            ubicacion = :ubicacion
-        WHERE id = :requestId
-    """)
+    UPDATE formula_requests 
+    SET estado = :estado,
+        comentarioFarmaceuta = :comentario,
+        turno = :turno,
+        ubicacion = :ubicacion,
+        tiempoEspera = :tiempoEspera,
+        posicionCola = :posicionCola
+    WHERE id = :requestId
+""")
     suspend fun updateRequestStatus(
         requestId: Int,
         estado: String,
         comentario: String,
         turno: String,
-        ubicacion: String
+        ubicacion: String,
+        tiempoEspera: Int,
+        posicionCola: Int
     )
 
     @Query("""

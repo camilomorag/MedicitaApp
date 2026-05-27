@@ -114,46 +114,59 @@ fun AppRoot() {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel()
     var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         try {
-            Log.d("AppRoot", "Iniciando AppRoot...")
+            Log.d("AppRoot", "Iniciando...")
 
-            // ✅ Inicializar servicios (NOTIFICACIONES + GEMINI)
-            authViewModel.initServices(context)  // ← Cambia esto
+            // Inicializar servicios
+            authViewModel.initServices(context)
 
-            // Cargar medicamentos
-            authViewModel.preloadMedicinesIfNeeded(context)
-
-            val db = AppDatabase.getDatabase(context)
-            val medicinesAfter = db.medicineDao().getAllMedicines()
-            Log.d("AppRoot", "Medicamentos después de cargar: ${medicinesAfter.size}")
+            // Cargar medicamentos (con try-catch específico)
+            try {
+                authViewModel.preloadMedicinesIfNeeded(context)
+            } catch (e: Exception) {
+                Log.e("AppRoot", "Error cargando medicamentos: ${e.message}", e)
+                errorMessage = "Error cargando medicamentos: ${e.message}"
+            }
 
         } catch (e: Exception) {
             Log.e("AppRoot", "Error fatal: ${e.message}", e)
+            errorMessage = "Error: ${e.message}"
         } finally {
             isLoading = false
         }
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFF4F6F8)
-    ) {
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Cargando...")
+    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF4F6F8)) {
+        when {
+            errorMessage != null -> {
+                // Mostrar error en pantalla
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("❌ Error al iniciar", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Red)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(errorMessage!!, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(onClick = { android.os.Process.killProcess(android.os.Process.myPid()) }) {
+                        Text("Cerrar app")
+                    }
+                }
             }
-        } else {
-            AppNavHost(
-                navController = navController,
-                authViewModel = authViewModel
-            )
+            isLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Cargando...")
+                }
+            }
+            else -> {
+                AppNavHost(navController = navController, authViewModel = authViewModel)
+            }
         }
     }
 }
