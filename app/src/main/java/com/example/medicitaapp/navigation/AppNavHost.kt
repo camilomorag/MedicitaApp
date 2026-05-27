@@ -35,11 +35,12 @@ import com.example.medicitaapp.viewmodel.AuthViewModel
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel,
+    startDestination: String = AppRoutes.LOGIN  // ✅ Nuevo parámetro
 ) {
     NavHost(
         navController = navController,
-        startDestination = AppRoutes.LOGIN
+        startDestination = startDestination
     ) {
         composable(AppRoutes.LOGIN) {
             LoginScreen(
@@ -155,14 +156,17 @@ fun AppNavHost(
 
         composable(AppRoutes.PROFILE) {
             if (authViewModel.currentUser == null) {
-                navController.navigate(AppRoutes.LOGIN)
+                navController.navigate(AppRoutes.LOGIN) {
+                    popUpTo(0) { inclusive = true }
+                }
             } else {
                 UserProfileScreen(
                     authViewModel = authViewModel,
                     onBack = { navController.popBackStack() },
                     onLogout = {
+                        authViewModel.logout()
                         navController.navigate(AppRoutes.LOGIN) {
-                            popUpTo(0) { inclusive = true }
+                            popUpTo(0) { inclusive = true }  // ✅ Limpiar toda la pila
                         }
                     }
                 )
@@ -192,7 +196,9 @@ fun AppNavHost(
 
         composable(AppRoutes.PHARMACIST_REQUESTS) {
             if (!authViewModel.isPharmacistLoggedIn) {
-                navController.navigate(AppRoutes.PHARMACIST_LOGIN)
+                navController.navigate(AppRoutes.PHARMACIST_LOGIN) {
+                    popUpTo(0) { inclusive = true }  // ✅ Limpiar toda la pila
+                }
             } else {
                 PharmacistRequestsScreen(
                     authViewModel = authViewModel,
@@ -206,7 +212,7 @@ fun AppNavHost(
                     onLogout = {
                         authViewModel.logout()
                         navController.navigate(AppRoutes.LOGIN) {
-                            popUpTo(0) { inclusive = true }
+                            popUpTo(0) { inclusive = true }  // ✅ Limpiar toda la pila
                         }
                     }
                 )

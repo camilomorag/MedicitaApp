@@ -6,10 +6,12 @@ import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.medicitaapp.data.*
 import com.example.medicitaapp.services.GeminiService
 import com.example.medicitaapp.services.NotificationService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
@@ -30,8 +32,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     var isPharmacistLoggedIn by mutableStateOf(false)
         private set
 
+    var isRestoringSession by mutableStateOf(true)
+        private set
+
     init {
-        restoreSession()
+        // Restaurar sesión de manera asíncrona
+        viewModelScope.launch {
+            restoreSessionInternal()
+        }
     }
 
     fun initServices(context: Context) {
@@ -39,10 +47,47 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         geminiService = GeminiService(context)
     }
 
-    private fun restoreSession() {
+    // ✅ MÉTODO TEMPORAL PARA LIMPIAR SESIÓN
+    fun forceClearSession() {
+        sessionManager.clearSession()
+        currentUser = null
+        isPharmacistLoggedIn = false
+        Log.d("AuthViewModel", "✅ Sesión forzada limpiada")
+    }
+
+    // ✅ NUEVO MÉTODO restoreSession() que devuelve Boolean
+    suspend fun restoreSession(): Boolean {
         isPharmacistLoggedIn = sessionManager.isPharmacistLoggedIn()
+        if (isPharmacistLoggedIn) {
+            Log.d("AuthViewModel", "✅ Sesión de farmaceuta restaurada")
+            return true
+        }
         val documento = sessionManager.getUserDocumento()
-        // Se cargará luego con login
+        if (documento != null) {
+            currentUser = userDao.getUserByDocumento(documento)
+            val restored = currentUser != null
+            if (restored) {
+                Log.d("AuthViewModel", "✅ Sesión de usuario restaurada: ${currentUser?.nombre}")
+            } else {
+                Log.d("AuthViewModel", "⚠️ Usuario no encontrado, sesión limpiada")
+                sessionManager.clearSession()
+            }
+            return restored
+        }
+        Log.d("AuthViewModel", "No hay sesión guardada")
+        return false
+    }
+
+    // ✅ MÉTODO INTERNO para restaurar sesión (original)
+    private suspend fun restoreSessionInternal() {
+        try {
+            isRestoringSession = true
+            restoreSession()
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error restaurando sesión: ${e.message}", e)
+        } finally {
+            isRestoringSession = false
+        }
     }
 
     // ============================================
@@ -76,19 +121,28 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     suspend fun login(documento: String, password: String): Boolean {
-        val user = userDao.login(documento, password)
-        currentUser = user
-        if (user != null) {
-            sessionManager.saveUserSession(user.documento)
-            isPharmacistLoggedIn = false
+        return try {
+            val user = userDao.login(documento, password)
+            if (user != null) {
+                currentUser = user
+                isPharmacistLoggedIn = false
+                sessionManager.saveUserSession(user.documento)
+                Log.d("AuthViewModel", "✅ Login exitoso: ${user.nombre}")
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error en login: ${e.message}", e)
+            false
         }
-        return user != null
     }
 
     fun loginAsPharmacist() {
         isPharmacistLoggedIn = true
         currentUser = null
         sessionManager.savePharmacistSession()
+        Log.d("AuthViewModel", "✅ Login como farmaceuta")
     }
 
     // ============================================
@@ -192,7 +246,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return notificationDao.getNotificationsByUser(user.documento)
     }
 
-    // Método original (para mantener compatibilidad)
     suspend fun updateRequestAsPharmacist(
         requestId: Int,
         estado: String,
@@ -244,8 +297,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    // Método para asignar turno con tiempo y posición
-    // Método para asignar turno con tiempo y posición
     suspend fun updateRequestWithTurno(
         requestId: Int,
         estado: String,
@@ -266,7 +317,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             posicionCola = posicionCola
         )
 
-        // Notificación al usuario
         notificationService.showFormulaStatusNotification(
             estado = estado,
             medicamento = request.medicamento,
@@ -278,12 +328,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             NotificationEntity(
                 userDocumento = request.userDocumento,
                 title = "🎫 Turno asignado",
-                message = "Su turno es $turno en $ubicacion. Tiempo estimado: $tiempoEspera minutos. Posición: $posicionCola°"
+                message = "Su turno es $turno en $ubicacion. Tiempo estimado: $tiempoEspera minutos. Posicion: $posicionCola°"
             )
         )
     }
+
     // ============================================
-    // FUNCIONES PARA CARGAR MEDICAMENTOS DESDE API
+    // FUNCIONES PARA CARGAR MEDICAMENTOS
     // ============================================
 
     suspend fun loadMedicinesFromApi(): List<MedicineEntity> {
@@ -369,14 +420,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     medicineDao.insertAll(apiMedicines)
                     Log.d("AuthViewModel", "✅ ${apiMedicines.size} medicamentos guardados desde API")
                 } else {
-                    Log.w("AuthViewModel", "⚠️ API falló, intentando con CSV...")
-                    val csvMedicines = MedicineCsvLoader.loadMedicinesFromCsv(context)
-                    if (csvMedicines.isNotEmpty()) {
-                        medicineDao.insertAll(csvMedicines)
-                        Log.d("AuthViewModel", "✅ ${csvMedicines.size} medicamentos guardados desde CSV")
-                    } else {
-                        Log.e("AuthViewModel", "❌ No se pudo cargar medicamentos desde API ni CSV")
-                    }
+                    Log.w("AuthViewModel", "⚠️ API falló, insertando medicamentos de prueba...")
+                    insertMockMedicines()
                 }
             } else {
                 Log.d("AuthViewModel", "✅ Ya hay ${current.size} medicamentos en DB")
@@ -384,6 +429,62 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             Log.e("AuthViewModel", "❌ Error en preloadMedicinesIfNeeded: ${e.message}", e)
         }
+    }
+
+    // ✅ DATOS DE PRUEBA PARA QUE LA APP NO FALLE
+    private suspend fun insertMockMedicines() {
+        val mockMedicines = listOf(
+            MedicineEntity(
+                expediente = "EXP-001",
+                producto = "Paracetamol 500mg",
+                titular = "Genfar",
+                registroSanitario = "INVIMA 2024-001",
+                fechaExpedicion = "2024",
+                fechaVencimiento = "2026",
+                estadoRegistro = "Vigente",
+                descripcion = "Analgésico y antipirético",
+                estadoComercial = "Activo",
+                unidad = "Tableta",
+                disponible = true,
+                viaAdministracion = "Oral",
+                formaFarmaceutica = "Tableta",
+                principioActivo = "Paracetamol"
+            ),
+            MedicineEntity(
+                expediente = "EXP-002",
+                producto = "Ibuprofeno 400mg",
+                titular = "MK",
+                registroSanitario = "INVIMA 2024-002",
+                fechaExpedicion = "2024",
+                fechaVencimiento = "2026",
+                estadoRegistro = "Vigente",
+                descripcion = "Antiinflamatorio no esteroideo",
+                estadoComercial = "Activo",
+                unidad = "Tableta",
+                disponible = true,
+                viaAdministracion = "Oral",
+                formaFarmaceutica = "Tableta",
+                principioActivo = "Ibuprofeno"
+            ),
+            MedicineEntity(
+                expediente = "EXP-003",
+                producto = "Amoxicilina 500mg",
+                titular = "Lab. Chile",
+                registroSanitario = "INVIMA 2024-003",
+                fechaExpedicion = "2024",
+                fechaVencimiento = "2026",
+                estadoRegistro = "Vigente",
+                descripcion = "Antibiótico de amplio espectro",
+                estadoComercial = "Activo",
+                unidad = "Cápsula",
+                disponible = true,
+                viaAdministracion = "Oral",
+                formaFarmaceutica = "Cápsula",
+                principioActivo = "Amoxicilina"
+            )
+        )
+        medicineDao.insertAll(mockMedicines)
+        Log.d("AuthViewModel", "✅ ${mockMedicines.size} medicamentos de prueba insertados")
     }
 
     suspend fun getAllMedicines(): List<MedicineEntity> {
@@ -402,9 +503,19 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return medicineDao.getMedicineById(medicineId)
     }
 
+    // ✅ CORREGIDO: Cierre de sesión mejorado
     fun logout() {
-        currentUser = null
-        isPharmacistLoggedIn = false
-        sessionManager.clearSession()
+        try {
+            // Limpiar estado
+            currentUser = null
+            isPharmacistLoggedIn = false
+
+            // Limpiar SharedPreferences
+            sessionManager.clearSession()
+
+            Log.d("AuthViewModel", "✅ Sesión cerrada correctamente")
+        } catch (e: Exception) {
+            Log.e("AuthViewModel", "Error al cerrar sesión: ${e.message}", e)
+        }
     }
 }

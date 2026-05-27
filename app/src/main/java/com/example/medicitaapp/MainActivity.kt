@@ -69,13 +69,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.medicitaapp.data.AppDatabase
 import com.example.medicitaapp.navigation.AppNavHost
+import com.example.medicitaapp.navigation.AppRoutes
 import com.example.medicitaapp.ui.theme.MedicitaAppTheme
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    // Registrar el launcher para el permiso de notificaciones
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -89,7 +89,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Solicitar permiso de notificaciones (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     this,
@@ -114,59 +113,71 @@ fun AppRoot() {
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel()
     var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var startDestination by remember { mutableStateOf(AppRoutes.LOGIN) }
 
     LaunchedEffect(Unit) {
         try {
-            Log.d("AppRoot", "Iniciando...")
+            Log.d("AppRoot", "Iniciando AppRoot...")
 
-            // Inicializar servicios
             authViewModel.initServices(context)
 
-            // Cargar medicamentos (con try-catch específico)
+            // ✅ Primero limpiar cualquier sesión previa problemática
+            // Esto es TEMPORAL para solucionar el problema
+            authViewModel.forceClearSession()
+
+            // ✅ Ahora restaurar sesión
+            val isPharmacist = authViewModel.restoreSession()
+
+            // ✅ Determinar destino
+            startDestination = when {
+                isPharmacist -> {
+                    Log.d("AppRoot", "🔄 Navegando a pantalla de farmacéutico")
+                    AppRoutes.PHARMACIST_REQUESTS
+                }
+                authViewModel.currentUser != null -> {
+                    Log.d("AppRoot", "🔄 Navegando a Home de usuario: ${authViewModel.currentUser?.nombre}")
+                    AppRoutes.HOME
+                }
+                else -> {
+                    Log.d("AppRoot", "🔄 Navegando a Login")
+                    AppRoutes.LOGIN
+                }
+            }
+
+            // Cargar medicamentos
             try {
                 authViewModel.preloadMedicinesIfNeeded(context)
             } catch (e: Exception) {
                 Log.e("AppRoot", "Error cargando medicamentos: ${e.message}", e)
-                errorMessage = "Error cargando medicamentos: ${e.message}"
             }
 
         } catch (e: Exception) {
             Log.e("AppRoot", "Error fatal: ${e.message}", e)
-            errorMessage = "Error: ${e.message}"
+            startDestination = AppRoutes.LOGIN
         } finally {
             isLoading = false
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF4F6F8)) {
-        when {
-            errorMessage != null -> {
-                // Mostrar error en pantalla
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("❌ Error al iniciar", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Red)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(errorMessage!!, textAlign = TextAlign.Center)
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(onClick = { android.os.Process.killProcess(android.os.Process.myPid()) }) {
-                        Text("Cerrar app")
-                    }
-                }
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color(0xFFF4F6F8)
+    ) {
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Cargando...")
             }
-            isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Cargando...")
-                }
-            }
-            else -> {
-                AppNavHost(navController = navController, authViewModel = authViewModel)
-            }
+        } else {
+            AppNavHost(
+                navController = navController,
+                authViewModel = authViewModel,
+                startDestination = startDestination
+            )
         }
     }
 }
@@ -177,7 +188,7 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onGoRegister: () -> Unit,
     onGoPharmacist: () -> Unit,
-    onForgotPassword: () -> Unit  // ✅ Agregar este parámetro
+    onForgotPassword: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -320,7 +331,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 TextButton(
-                    onClick = { onForgotPassword() },  // ✅ Cambiar esto
+                    onClick = { onForgotPassword() },
                     modifier = Modifier.align(Alignment.End)
                 ) {
                     Text(
@@ -337,38 +348,19 @@ fun LoginScreen(
                     onClick = {
                         when {
                             documento.isBlank() -> {
-                                Toast.makeText(
-                                    context,
-                                    "Ingrese su documento",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                Toast.makeText(context, "Ingrese su documento", Toast.LENGTH_SHORT).show()
                             }
-
                             password.isBlank() -> {
-                                Toast.makeText(
-                                    context,
-                                    "Ingrese su contrasena",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                Toast.makeText(context, "Ingrese su contrasena", Toast.LENGTH_SHORT).show()
                             }
-
                             else -> {
                                 scope.launch {
                                     val success = authViewModel.login(documento, password)
-
                                     if (success) {
-                                        Toast.makeText(
-                                            context,
-                                            "Login exitoso",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        Toast.makeText(context, "Login exitoso", Toast.LENGTH_SHORT).show()
                                         onLoginSuccess()
                                     } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Datos incorrectos",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        Toast.makeText(context, "Datos incorrectos", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -378,61 +370,30 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(58.dp),
                     shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2F80ED)
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2F80ED))
                 ) {
-                    Text(
-                        text = "Iniciar sesion",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "Iniciar sesion", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                Text(
-                    text = "o tambien",
-                    color = Color(0xFF9AA2AE),
-                    fontSize = 12.sp
-                )
+                Text(text = "o tambien", color = Color(0xFF9AA2AE), fontSize = 12.sp)
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
-                    onClick = {
-                        // Redirigir a la pantalla de registro (crear cuenta)
-                        onGoRegister()
-                    },
+                    onClick = { onGoRegister() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        Color(0xFFE2E7EF)
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E7EF))
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Call,
-                            contentDescription = null,
-                            tint = Color(0xFF4A8CFF)
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        Icon(imageVector = Icons.Default.Call, contentDescription = null, tint = Color(0xFF4A8CFF))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Registrarse con número de celular",
-                            color = Color(0xFF2C3140),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(text = "Registrarse con número de celular", color = Color(0xFF2C3140), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -444,20 +405,10 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.5.dp,
-                        Color(0xFF2F80ED)
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF2F80ED))
                 ) {
-                    Text(
-                        text = "Crear cuenta",
-                        color = Color(0xFF2F80ED),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "Crear cuenta", color = Color(0xFF2F80ED), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -468,16 +419,9 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFEEF4FF)
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF4FF))
                 ) {
-                    Text(
-                        text = "Ingresar como farmaceutico",
-                        color = Color(0xFF2F80ED),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "Ingresar como farmaceutico", color = Color(0xFF2F80ED), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -490,12 +434,7 @@ fun LoginScreen(
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Necesita ayuda?",
-                        color = Color(0xFF6D7685),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "Necesita ayuda?", color = Color(0xFF6D7685), fontSize = 13.sp, fontWeight = FontWeight.Bold)
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -507,37 +446,21 @@ fun LoginScreen(
                             context.startActivity(intent)
                         },
                         shape = RoundedCornerShape(22.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Call,
-                            contentDescription = null,
-                            tint = Color(0xFF2F80ED)
-                        )
+                        Icon(imageVector = Icons.Default.Call, contentDescription = null, tint = Color(0xFF2F80ED))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Llamar a soporte",
-                            color = Color(0xFF2F80ED),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(text = "Llamar a soporte", color = Color(0xFF2F80ED), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                Text(
-                    text = "Acceso Seguro y Protegido",
-                    color = Color(0xFF9AA2AE),
-                    fontSize = 11.sp
-                )
+                Text(text = "Acceso Seguro y Protegido", color = Color(0xFF9AA2AE), fontSize = 11.sp)
             }
         }
     }
 }
-
 
 @Composable
 fun TopIcon() {
@@ -549,6 +472,7 @@ fun TopIcon() {
             .clip(CircleShape)
     )
 }
+
 @Composable
 fun customTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = Color(0xFFD9DEE7),

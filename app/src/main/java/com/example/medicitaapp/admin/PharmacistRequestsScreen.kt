@@ -145,8 +145,14 @@ fun PharmacistRequestsScreen(
                 Text("Volver", color = Color(0xFF2F80ED), fontWeight = FontWeight.Bold)
             }
 
+            // ✅ Botón de cierre de sesión CORREGIDO
             Button(
-                onClick = onLogout,
+                onClick = {
+                    scope.launch {
+                        authViewModel.logout()
+                        onLogout()
+                    }
+                },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
             ) {
