@@ -1,6 +1,8 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.compose)  // ✅ CORREGIDO: "kotlin" no "plints"
     alias(libs.plugins.ksp)
 }
 
@@ -35,7 +37,25 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+}
+
+// Cargar API key desde local.properties
+val localProperties = Properties()
+val localFile = rootProject.file("local.properties")
+if (localFile.exists()) {
+    localProperties.load(localFile.inputStream())
+}
+val geminiApiKey: String = localProperties.getProperty("GEMINI_API_KEY", "")
+
+// Verificar si la API key está configurada
+if (geminiApiKey.isEmpty()) {
+    throw GradleException("GEMINI_API_KEY not found in local.properties. Please add: GEMINI_API_KEY=your_key_here")
+}
+
+android.defaultConfig {
+    buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
 }
 
 dependencies {
@@ -48,7 +68,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")  // ✅ Actualizado a 2.7.0
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.9.7")
 
@@ -60,7 +80,6 @@ dependencies {
     ksp("androidx.room:room-compiler:2.8.4")
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
     // Retrofit para llamadas a la API
@@ -70,11 +89,13 @@ dependencies {
 
     // Para corutinas
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
     // Gemini API
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
     // Para imágenes (Gemini Vision)
     implementation("com.google.guava:guava:33.0.0-android")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

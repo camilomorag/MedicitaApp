@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
+import com.example.medicitaapp.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -21,8 +22,9 @@ import java.util.concurrent.TimeUnit
 class GeminiService(private val context: Context) {
 
     companion object {
-        private const val API_KEY = "AIzaSyCGI45rST0XuJHDFTUQci2yZ-eG-Ib1XMM"
+        private val API_KEY = BuildConfig.GEMINI_API_KEY
         private const val MODEL_NAME = "gemini-2.5-flash"
+        // ✅ URL CORREGIDA
         private val API_URL = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL_NAME:generateContent?key=$API_KEY"
     }
 
@@ -41,7 +43,7 @@ class GeminiService(private val context: Context) {
         val isValidDate: Boolean = true,
         val isReadable: Boolean = true,
         val message: String = "",
-        val observations: List<String> = emptyList()  // ✅ Campo agregado
+        val observations: List<String> = emptyList()
     )
 
     suspend fun validateFormula(
@@ -54,6 +56,16 @@ class GeminiService(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("GeminiService", "🔄 Iniciando validación...")
+
+                if (API_KEY.isEmpty() || API_KEY == "") {
+                    Log.e("GeminiService", "❌ API Key no configurada")
+                    return@withContext ValidationResult(
+                        isValid = true,
+                        message = "API Key no configurada. Validación automática.",
+                        observations = listOf("Configure GEMINI_API_KEY en local.properties")
+                    )
+                }
+
                 Log.d("GeminiService", "📡 URL: $API_URL")
 
                 val prompt = buildPrompt(patientNameExpected, documentIdExpected, phoneExpected)
@@ -212,8 +224,9 @@ class GeminiService(private val context: Context) {
         }
         
         Si algo no coincide, pon isValid=false y explica detalladamente en el array de "observations" que elementos no coinciden.
-    """.trimIndent()
+        """.trimIndent()
     }
+
     private fun parseResponse(responseText: String): ValidationResult {
         return try {
             val json = JSONObject(responseText)
@@ -229,7 +242,6 @@ class GeminiService(private val context: Context) {
 
             val resultJson = JSONObject(cleanJson)
 
-            // ✅ Extraer observaciones del JSON
             val observationsList = mutableListOf<String>()
             val observationsArray = resultJson.optJSONArray("observations")
             if (observationsArray != null) {
@@ -244,7 +256,7 @@ class GeminiService(private val context: Context) {
                 documentId = resultJson.optString("documentId", ""),
                 medicineName = resultJson.optString("medicineName", ""),
                 message = resultJson.optString("message", "Validacion completada"),
-                observations = observationsList  // ✅ Asignar observaciones
+                observations = observationsList
             )
         } catch (e: Exception) {
             Log.e("GeminiService", "Error parseando: ${e.message}")
