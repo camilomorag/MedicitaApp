@@ -1,31 +1,33 @@
-SUBO EL REDME POR ACA Y NO AL GITHUB DEBIDO A COMPLICACIONES TECNICAS PERO PARA AL OTRA ENTREGA SE SUBIRA TOALMENTE A EL GIT
-
 # 📱 MedicitaApp
 
 ## 📌 Descripción del Proyecto
 
-MedicitaApp es una aplicación móvil desarrollada en Android utilizando Jetpack Compose. Permite a los usuarios gestionar la solicitud de medicamentos mediante el envío de fórmulas médicas digitales y consultar el estado de sus solicitudes.
+MedicitaApp es una aplicación móvil desarrollada en Android utilizando Jetpack Compose. Permite a los usuarios gestionar la solicitud de medicamentos mediante el envío de fórmulas médicas digitales (imagen o PDF) y consultar el estado de sus solicitudes.
 
-Además, incluye un módulo para el farmacéuta, quien puede revisar, aprobar, rechazar o aplazar solicitudes.
+Además, incluye un módulo para el farmacéuta, quien puede revisar, aprobar, rechazar o aplazar solicitudes, así como asignar turnos digitales y gestionar medicamentos.
 
 ---
 
 ## 👥 Integrantes
 
-Camilo Andres Mora Garzon
-Luis Eduardo Fino
+- Camilo Andres Mora Garzon
+- Luis Eduardo Fino
 
 ---
 
 ## ⚙️ Tecnologías utilizadas
 
-- **Lenguaje:** Kotlin
-- **UI:** Jetpack Compose
-- **Arquitectura:** MVVM
-- **Navegación:** Navigation Compose (NavHost)
-- **Base de datos:** Room Database
-- **Persistencia:** Local (Room + SessionManager)
-- **IDE:** Android Studio
+| Tecnología        | Uso                                   |
+| ----------------- | ------------------------------------- |
+| **Lenguaje**      | Kotlin                                |
+| **UI**            | Jetpack Compose                       |
+| **Arquitectura**  | MVVM                                  |
+| **Navegación**    | Navigation Compose (NavHost)          |
+| **Base de datos** | Room Database                         |
+| **Persistencia**  | Local (Room + SessionManager)         |
+| **Networking**    | Retrofit + Gson                       |
+| **API**           | Gemini AI para validación de fórmulas |
+| **IDE**           | Android Studio                        |
 
 ---
 
@@ -34,24 +36,51 @@ Luis Eduardo Fino
 ### 👤 Usuario
 
 - Registro e inicio de sesión
-- Subida de fórmulas médicas (imagen o archivo)
+- Recuperación de contraseña
+- Subida de fórmulas médicas (cámara, galería o PDF)
+- Validación automática con IA (Gemini)
 - Consulta del estado de solicitudes
-- Visualización de turno digital
-- Recepción de notificaciones
-- Perfil de usuario con historial
+- Visualización de turno digital (con tiempo de espera y posición)
+- Recepción de notificaciones push
+- Perfil de usuario con historial de solicitudes
+- Persistencia de sesión (no necesita volver a iniciar sesión)
 
 ### 💊 Farmacéuta
 
-- Inicio de sesión especial
-- Visualización de solicitudes
-- Revisión de fórmulas médicas
-- Acciones:
-  - Aprobar
-  - Rechazar
-  - Aplazar
-  - Marcar como listo
+- Inicio de sesión especial (admin/1234)
+- Visualización de solicitudes por estado (Pendientes, Aceptadas, Rechazadas, Aplazadas)
+- Revisión de fórmulas médicas (ver imagen/PDF)
+- Acciones sobre solicitudes:
+  - ✅ Aprobar (con turno automático)
+  - ❌ Rechazar
+  - ⏰ Aplazar
+  - 🎉 Marcar como listo
+- Asignación de turno digital con:
+  - Número de turno (ej: A-42)
+  - Ubicación de la farmacia
+  - Tiempo estimado de espera
+  - Posición en la cola
+- Gestión de medicamentos (CRUD con API de datos.gov.co)
 
-- Asignación de turno y ubicación
+---
+
+## 🗂️ Estructura del Proyecto
+
+app/
+├── src/main/java/com/example/medicitaapp/
+│ ├── admin/ # Pantallas del farmacéuta
+│ ├── data/ # Room, DAOs, Entities, SessionManager
+│ ├── navigation/ # AppNavHost, AppRoutes
+│ ├── services/ # GeminiService, NotificationService
+│ ├── ui/ # Componentes reutilizables
+│ ├── user/ # Pantallas de usuario
+│ ├── viewmodel/ # AuthViewModel
+│ └── MainActivity.kt # Punto de entrada
+├── res/
+│ ├── drawable/ # Iconos y recursos gráficos
+│ ├── xml/ # file_paths.xml para FileProvider
+│ └── ...
+└── build.gradle.kts # Dependencias
 
 ---
 
@@ -59,14 +88,12 @@ Luis Eduardo Fino
 
 La aplicación implementa navegación usando `NavHost`, permitiendo flujo entre:
 
-- Login
-- Registro
-- Home
-- Subida de fórmula
-- Estado de turno
-- Notificaciones
-- Perfil
-- Panel farmacéuta
+- **Login** → Registro / Home / Farmacéuta / Recuperación
+- **Registro** → Login
+- **Home** → Subir fórmula / Turno / Notificaciones / Perfil
+- **Farmacéuta** → Solicitudes / Gestión de medicamentos
+
+**Persistencia de sesión:** La app recuerda si el usuario o farmacéuta estaba logueado, incluso después de cerrar la app.
 
 ---
 
@@ -74,40 +101,26 @@ La aplicación implementa navegación usando `NavHost`, permitiendo flujo entre:
 
 Se utiliza Room Database para almacenar:
 
-- Usuarios
-- Solicitudes de fórmulas
-- Notificaciones
+- **Usuarios** (nombre, documento, teléfono, contraseña)
+- **Solicitudes de fórmulas** (URI, tipo, estado, turno, ubicación)
+- **Notificaciones** (título, mensaje, estado de lectura)
+- **Medicamentos** (catálogo desde API)
 
 Los datos persisten entre ejecuciones de la aplicación.
 
 ---
 
-## ▶️ Cómo ejecutar el proyecto
+## 🔐 API Key (Gemini)
 
-1. Clonar el repositorio:
+La API Key de Gemini se maneja de forma segura:
 
-```bash
-git clone [URL_DEL_REPOSITORIO]
+- Se almacena en `local.properties` (NO subir a GitHub)
+- Se inyecta en tiempo de compilación con `BuildConfig`
+- El repositorio público NO contiene la API key
+
+**Configuración local:**
+
+```properties
+# local.properties
+GEMINI_API_KEY=tu_api_key_aqui
 ```
-
-2. Abrir en Android Studio
-
-3. Ejecutar en un emulador o dispositivo físico
-
----
-
-## ✅ Estado del proyecto
-
-✔ Interfaz de usuario completa
-✔ Navegación funcional
-✔ Persistencia con Room
-✔ Flujo usuario-farmacéuta implementado
-
----
-
-## 📌 Notas
-
-- El sistema de carga de archivos funciona con almacenamiento local.
-- Se implementara para la otra entrega los mediacamentos con el room
-
----
