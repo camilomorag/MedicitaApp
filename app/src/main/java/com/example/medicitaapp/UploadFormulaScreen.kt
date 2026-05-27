@@ -8,43 +8,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.medicitaapp.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadFormulaScreen(
     authViewModel: AuthViewModel,
@@ -66,6 +39,7 @@ fun UploadFormulaScreen(
 
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileType by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -76,11 +50,10 @@ fun UploadFormulaScreen(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-            } catch (_: Exception) {
-            }
+            } catch (_: Exception) {}
             selectedFileUri = uri
             selectedFileType = "image"
-            Toast.makeText(context, "Imagen seleccionada", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "✅ Imagen seleccionada", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -93,50 +66,122 @@ fun UploadFormulaScreen(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-            } catch (_: Exception) {
-            }
+            } catch (_: Exception) {}
             selectedFileUri = uri
             selectedFileType = "pdf"
-            Toast.makeText(context, "Archivo PDF seleccionado", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "✅ PDF seleccionado", Toast.LENGTH_SHORT).show()
         }
     }
 
+    // Función para eliminar archivo seleccionado
+    fun clearSelectedFile() {
+        selectedFileUri = null
+        selectedFileType = ""
+        Toast.makeText(context, "Archivo eliminado", Toast.LENGTH_SHORT).show()
+    }
+
     Scaffold(
-        containerColor = Color(0xFFF3F5F9)
+        containerColor = Color(0xFFF3F5F9),
+        topBar = {
+            TopAppBar(
+                title = { Text("Subir fórmula médica", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            )
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF3F5F9))
                 .padding(innerPadding)
-                .statusBarsPadding()
-                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            UploadHeader(onBack = onBack)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            UploadProgressSection()
+            // Título principal
+            Text(
+                text = "📸 Tome una foto clara de su fórmula médica",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1D2433),
+                textAlign = TextAlign.Center
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            FormulaFrameCard()
+            // Consejos para tomar la foto
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "📋 Consejos para una buena foto:",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFE65100)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("1. Busque un lugar bien iluminado", fontSize = 13.sp)
+                    Text("2. Coloque el papel sobre una superficie plana", fontSize = 13.sp)
+                    Text("3. Mantenga el teléfono firme", fontSize = 13.sp)
+                    Text("4. Asegúrese de que toda la fórmula sea visible", fontSize = 13.sp)
+                }
+            }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // Marco para la foto
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .border(2.dp, Color(0xFF2F80ED), RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBFE))
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Description,
+                            contentDescription = null,
+                            tint = Color(0xFF2F80ED),
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Coloque la fórmula dentro de este marco",
+                            fontSize = 14.sp,
+                            color = Color(0xFF6E7786),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Botones para seleccionar archivo
             Button(
                 onClick = { imagePickerLauncher.launch(arrayOf("image/*")) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
-                    .height(58.dp),
+                    .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2B75DA))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2F80ED))
             ) {
-                Icon(Icons.Filled.CameraAlt, null, tint = Color.White)
+                Icon(Icons.Default.CameraAlt, null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("TAKE PHOTO", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("📷 Tomar foto o elegir imagen", color = Color.White, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -145,274 +190,141 @@ fun UploadFormulaScreen(
                 onClick = { pdfPickerLauncher.launch(arrayOf("application/pdf")) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
-                    .height(58.dp),
+                    .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                border = BorderStroke(1.5.dp, Color(0xFFD9DEE7))
+                border = BorderStroke(1.5.dp, Color(0xFF2F80ED))
             ) {
-                Icon(Icons.Filled.UploadFile, null, tint = Color(0xFF2B75DA))
+                Icon(Icons.Default.UploadFile, null, tint = Color(0xFF2F80ED))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("UPLOAD FILE", color = Color(0xFF243040), fontWeight = FontWeight.Bold)
+                Text("📄 Subir archivo PDF", color = Color(0xFF2F80ED), fontWeight = FontWeight.Bold)
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
+            // Archivo seleccionado
             if (selectedFileUri != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Archivo seleccionado",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1D2433)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    if (selectedFileType == "pdf") Icons.Default.PictureAsPdf else Icons.Default.Image,
+                                    null,
+                                    tint = Color(0xFF2E7D32)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (selectedFileType == "pdf") "PDF seleccionado" else "Imagen seleccionada",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
+                            }
+                            // Botón para eliminar archivo ❌
+                            IconButton(
+                                onClick = { clearSelectedFile() },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Eliminar archivo",
+                                    tint = Color(0xFFD32F2F)
+                                )
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Text("Tipo: $selectedFileType", color = Color(0xFF6E7786))
-                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = selectedFileUri.toString(),
-                            fontSize = 12.sp,
+                            text = selectedFileUri.toString().takeLast(50),
+                            fontSize = 11.sp,
                             color = Color(0xFF6E7786)
                         )
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
+                        // Botón para enviar la fórmula
                         Button(
                             onClick = {
+                                if (selectedFileUri == null) {
+                                    Toast.makeText(context, "❌ Seleccione una imagen o PDF primero", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                isLoading = true
                                 scope.launch {
                                     val result = authViewModel.submitFormulaRequest(
                                         formulaUri = selectedFileUri.toString(),
                                         formulaType = selectedFileType
                                     )
-
+                                    isLoading = false
                                     result.onSuccess {
-                                        Toast.makeText(
-                                            context,
-                                            "Solicitud enviada correctamente",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        Toast.makeText(context, "✅ Fórmula enviada correctamente", Toast.LENGTH_SHORT).show()
                                         onBack()
                                     }
-
                                     result.onFailure {
-                                        Toast.makeText(
-                                            context,
-                                            it.message ?: "Error al guardar",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        Toast.makeText(context, "❌ Error: ${it.message}", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                         ) {
-                            Text(
-                                text = "Guardar solicitud",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
+                            if (isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                            } else {
+                                Icon(Icons.Default.Send, null, tint = Color.White)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Enviar fórmula", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(14.dp))
             }
 
-            UploadHelpCard()
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(18.dp))
-        }
-    }
-}
-
-@Composable
-fun UploadHeader(
-    onBack: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFF3F5F9))
-            .padding(horizontal = 10.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Volver",
-                tint = Color(0xFF222B3A)
-            )
-        }
-
-        Text(
-            text = "Upload Formula",
-            color = Color(0xFF222B3A),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-fun UploadProgressSection() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .background(Color(0xFFD8E2EF), RoundedCornerShape(10.dp))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.5f)
-                    .height(6.dp)
-                    .background(Color(0xFF1D66CC), RoundedCornerShape(10.dp))
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "STEP 1 OF 2",
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF2E3542),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Text(
-            text = "Take a clear\nphoto of your\npaper formula",
-            color = Color(0xFF1F2735),
-            fontSize = 22.sp,
-            lineHeight = 27.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFF8F3D9), RoundedCornerShape(18.dp))
-                .border(1.dp, Color(0xFFE7D98F), RoundedCornerShape(18.dp))
-                .padding(horizontal = 18.dp, vertical = 16.dp)
-        ) {
-            Text("1. Find a bright room", fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("2. Lay the paper flat", fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("3. Keep your hands steady", fontSize = 14.sp)
-        }
-    }
-}
-
-@Composable
-fun FormulaFrameCard() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FBFE))
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+            // Tarjeta de ayuda
             Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(2.dp, Color(0xFF3173D5))
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF182235))
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Description,
-                        contentDescription = null,
-                        tint = Color(0xFF3173D5)
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Place paper\ninside this\nframe",
-                        textAlign = TextAlign.Center,
-                        color = Color(0xFF1D2433),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        text = "❓ ¿Necesita ayuda?",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Si tiene dificultades para tomar la foto, pida ayuda a alguien cercano o llámenos.",
+                        fontSize = 13.sp,
+                        color = Color(0xFFE3EAF7)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:018000123456"))
+                            context.startActivity(intent)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2F80ED))
+                    ) {
+                        Icon(Icons.Default.Call, null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("LLAMAR A SOPORTE", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun UploadHelpCard() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp)
-            .background(Color(0xFF182235), RoundedCornerShape(16.dp))
-            .padding(14.dp)
-    ) {
-        Text(
-            text = "Need help?",
-            color = Color.White,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "If it's difficult to take\na photo, ask someone\nnearby or call us.",
-            color = Color(0xFFE3EAF7),
-            fontSize = 15.sp,
-            lineHeight = 21.sp
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Button(
-            onClick = { },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF2B75DA)
-            )
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Call,
-                contentDescription = null,
-                tint = Color.White
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = "CALL SUPPORT NOW",
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
         }
     }
 }
